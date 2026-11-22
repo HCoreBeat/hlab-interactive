@@ -1,0 +1,76 @@
+/* ============================================================ cuota / uso gratuito ==== */
+
+.topbar .quota-chip { cursor: pointer; padding: 0 12px 0 10px; font-weight: 600; white-space: nowrap; }
+.quota-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+}
+.topbar .quota-chip.is-warn { border-color: rgba(240, 180, 94, 0.55); color: var(--amber); }
+.topbar .quota-chip.is-warn .quota-dot { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.topbar .quota-chip.is-limited { border-color: rgba(244, 121, 111, 0.6); color: var(--red); background: var(--red-soft); }
+.topbar .quota-chip.is-limited .quota-dot { background: var(--red); box-shadow: 0 0 8px var(--red); animation: live-dot 1.1s ease-in-out infinite; }
+
+.quota-modal .modal-body { display: grid; gap: 14px; }
+.quota-lead { margin: 0; font-size: 0.9rem; line-height: 1.55; }
+.quota-lead strong { color: var(--amber); }
+.quota-sub { margin: 0; line-height: 1.5; }
+
+.quota-go {
+  display: grid;
+  place-items: center;
+  height: 96px;
+  border-radius: 12px;
+  background: radial-gradient(circle at 50% 50%, rgba(240, 180, 94, 0.18), transparent 70%), var(--bg);
+  border: 1px solid var(--border);
+}
+.quota-go span {
+  padding: 4px 18px;
+  border: 4px solid #d8c9b4;
+  color: #d8c9b4;
+  font: 800 2rem var(--mono, monospace);
+  letter-spacing: 0.18em;
+}
+.quota-link { justify-self: center; color: var(--amber); font-size: 0.8rem; text-decoration: underline; cursor: pointer; }
+
+.quota-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.quota-card.is-limited { border-color: rgba(244, 121, 111, 0.5); background: var(--red-soft); }
+.quota-big { font-size: 1.3rem; font-weight: 800; }
+.quota-bar { height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.quota-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--green), var(--amber), var(--red)); background-size: 200% 100%; transition: width 400ms ease; }
+.quota-reset { font-size: 0.8rem; font-weight: 600; color: var(--amber); }
+
+.quota-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.quota-stats > div {
+  display: grid;
+  gap: 2px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+.quota-stats strong { font-size: 1.05rem; }
+.quota-stats span { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.quota-models { display: grid; gap: 4px; }
+.quota-models-head { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding-bottom: 2px; }
+.quota-model-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 0.76rem;
+}
+.quota-model-name { font-family: var(--mono, monospace); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

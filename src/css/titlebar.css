@@ -1,0 +1,63 @@
+/* ==========================================================================
+   Barra de título propia. Windows no dibuja los controles del SO (evitamos
+   que tapen la UI) y los botones se pintan dentro del flex del topbar.
+   Se carga DESPUÉS de todos los temas.
+   ========================================================================== */
+
+.topbar {
+  gap: 8px;
+  padding: 0 8px 0 16px; /* antes: 150px a la derecha para el overlay del SO */
+}
+.topbar > * { min-width: 0; }
+.topbar .model-select-button { flex: 0 1 auto; }
+.topbar .select-wrap { flex: 0 1 auto; }
+.topbar .spacer { flex: 1 1 auto; }
+
+.window-controls {
+  display: flex;
+  flex: none;
+  align-self: stretch;
+  margin-left: 2px;
+  -webkit-app-region: no-drag;
+}
+.window-control {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+.window-control:hover { background: var(--surface-3); color: var(--text); }
+.window-control:active { background: var(--border-strong); }
+.window-control.is-close:hover { background: var(--red); color: #fff; }
+.window-control:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+
+/* La ventana no puede maximizarse desde Linux/macOS con esta barra: ocultamos
+   el botón cuando el proceso lo reporta (ver app.js). */
+.window-control[hidden] { display: none; }
+
+@media (max-width: 1500px) {
+  .topbar #app-version { display: none; }
+}
+@media (max-width: 1400px) {
+  .topbar .brand-name { display: none; }
+  .topbar .project-chip { max-width: 180px; }
+}
+@media (max-width: 1280px) {
+  .topbar .select-wrap > span:first-child { display: none; }
+  .topbar .model-select-button { max-width: 180px; }
+  .topbar .select-wrap select { max-width: 130px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .window-control { transition: none; }
+}

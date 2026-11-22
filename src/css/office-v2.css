@@ -1,0 +1,154 @@
+/* Visual refresh: activity badges, sessions tree, agents panel, office controls. */
+
+.ui-ico { display: inline-flex; vertical-align: -3px; margin-right: 4px; line-height: 0; }
+.ui-ico svg { display: block; }
+
+/* ---- activity bar badges: only attention items, never raw counters ---- */
+.activity-button { position: relative; }
+.activity-badge {
+  position: absolute; top: 2px; right: 2px; min-width: 15px; height: 15px; padding: 0 4px;
+  border: 0 !important; border-radius: 8px; box-sizing: border-box;
+  font: 700 9px/15px system-ui, sans-serif; text-align: center; color: #fff;
+  background: #4b5368 !important; box-shadow: 0 0 0 2px var(--bg-activity, rgba(20, 24, 33, 0.9));
+}
+.activity-badge[hidden] { display: none !important; }
+.activity-badge[data-tone="busy"] { background: #2f9e6e !important; }
+.activity-badge[data-tone="warn"] { background: #e0a340 !important; color: #2b1d05; animation: v2-pulse 1.4s ease-in-out infinite; }
+.activity-badge[data-tone="error"] { background: #e0505a !important; }
+@keyframes v2-pulse { 50% { transform: scale(1.18); } }
+
+/* ---- sessions tree ---- */
+.session-item {
+  display: flex; align-items: center; gap: 9px; margin: 2px 6px; padding: 7px 10px;
+  border: 1px solid transparent; border-radius: 9px; cursor: pointer; position: relative;
+  transition: background 0.15s, border-color 0.15s;
+}
+.session-item:hover { background: rgba(127, 140, 170, 0.12); }
+.session-item.is-active { background: rgba(97, 175, 239, 0.15); border-color: rgba(97, 175, 239, 0.4); }
+.session-item.is-child { margin-left: 24px; border-radius: 0 9px 9px 0; border-left: 2px solid rgba(111, 211, 255, 0.45); padding-left: 11px; }
+.session-item.is-child::before { content: ""; position: absolute; left: -14px; top: 50%; width: 12px; border-top: 2px solid rgba(111, 211, 255, 0.3); }
+.session-dot { width: 9px; height: 9px; border-radius: 50%; background: #5b6578; flex: none; }
+.session-item.is-busy .session-dot { background: #2f9e6e; animation: v2-dot 1.4s ease-out infinite; }
+.session-item.is-permission .session-dot { background: #e0a340; animation: v2-dot 1s ease-out infinite; }
+.session-item.is-error .session-dot { background: #e0505a; }
+.session-item.is-done .session-dot { background: #61afef; }
+@keyframes v2-dot { 0% { box-shadow: 0 0 0 0 rgba(120, 210, 160, 0.6); } 100% { box-shadow: 0 0 0 7px rgba(120, 210, 160, 0); } }
+.session-title-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.session-role {
+  flex: none; padding: 1px 7px; border-radius: 6px; font-size: 9px; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.session-role.is-primary { background: rgba(240, 180, 94, 0.16); color: #e0a340; }
+.session-role.is-subagent { background: rgba(111, 211, 255, 0.16); color: #3fb6e6; }
+.session-toggle { border: 0; background: rgba(127, 140, 170, 0.18); color: inherit; border-radius: 6px; padding: 0 6px; font-size: 10px; cursor: pointer; }
+.btn-icon { display: inline-flex; align-items: center; gap: 5px; }
+.recent-item { display: inline-flex; align-items: center; gap: 5px; }
+
+/* ---- agents panel ---- */
+.agents-summary { display: flex; gap: 6px; flex-wrap: wrap; padding: 4px 12px 10px; }
+.agents-summary .agent-chip { font-weight: 600; }
+.agent-row { margin: 6px 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(127, 140, 170, 0.22); background: rgba(127, 140, 170, 0.07); cursor: pointer; position: relative; }
+.agent-row:hover { background: rgba(127, 140, 170, 0.13); }
+.agent-row.is-active { border-color: rgba(97, 175, 239, 0.55); }
+.agent-row.is-child { margin-left: 26px; border-left: 3px solid rgba(111, 211, 255, 0.55); }
+.agent-row.is-child::before { content: ""; position: absolute; left: -16px; top: 22px; width: 14px; border-top: 2px solid rgba(111, 211, 255, 0.3); }
+.agent-row-head { display: flex; align-items: center; gap: 8px; }
+.agent-state-icon { display: inline-flex; width: 26px; height: 26px; align-items: center; justify-content: center; border-radius: 8px; background: rgba(127, 140, 170, 0.18); flex: none; }
+.agent-row.is-code .agent-state-icon, .agent-row.is-terminal .agent-state-icon { background: rgba(47, 158, 110, 0.22); color: #2f9e6e; }
+.agent-row.is-read .agent-state-icon, .agent-row.is-search .agent-state-icon { background: rgba(97, 175, 239, 0.22); color: #4a9be0; }
+.agent-row.is-mcp .agent-state-icon { background: rgba(86, 214, 170, 0.22); color: #2fbf8f; }
+.agent-row.is-wait .agent-state-icon { background: rgba(224, 163, 64, 0.25); color: #e0a340; }
+.agent-row.is-error .agent-state-icon { background: rgba(224, 80, 90, 0.25); color: #e0505a; }
+.agent-row-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.agent-chip.is-tool { display: inline-flex; align-items: center; gap: 4px; }
+
+/* ---- office ---- */
+.office-room-tag { transition: color 0.2s, background 0.2s; }
+.office-room-tag.is-active { color: #f0b45e; }
+.office-agent-title { display: inline-flex; align-items: center; gap: 5px; }
+.office-sound-btn {
+  position: absolute; top: 8px; right: 8px; z-index: 6; width: 30px; height: 30px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center; pointer-events: auto; cursor: pointer;
+  color: #e6ebf5; background: rgba(20, 26, 38, 0.72); border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 9px; backdrop-filter: blur(4px);
+}
+.office-sound-btn:hover { background: rgba(40, 52, 76, 0.9); }
+.office-sound-btn.is-muted { color: #8a94a6; }
+
+/* ---- sessions and agents: semantic colors keep contrast in both themes ---- */
+.session-list { gap: 5px; padding: 2px 8px 10px; }
+.session-item {
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 8px;
+  border-color: var(--border);
+  background: var(--surface);
+}
+.session-item:hover { background: var(--surface-2); border-color: var(--border-strong); }
+.session-item.is-active { background: var(--accent-soft); border-color: var(--accent); }
+.session-item.is-child {
+  margin-left: 20px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 9px 9px 0;
+  padding-left: 9px;
+  background: var(--surface-2);
+}
+.session-item.is-child::before { border-color: var(--accent); }
+.session-item .session-dot { background: var(--muted); }
+.session-item.is-busy .session-dot { background: var(--green); }
+.session-item.is-permission .session-dot { background: var(--amber); }
+.session-item.is-error .session-dot { background: var(--red); }
+.session-item.is-done .session-dot { background: var(--accent); }
+.session-role {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font: 700 0.56rem/1.35 var(--mono);
+}
+.session-role.is-primary { color: var(--amber); background: var(--amber-soft); }
+.session-role.is-subagent { color: var(--accent); background: var(--accent-soft); }
+.session-title { color: var(--text-dim); }
+.session-item.is-active .session-title { color: var(--text); }
+.session-parent { color: var(--muted); }
+.session-meta { color: var(--text-dim); }
+.session-toggle { color: var(--text-dim); }
+.session-toggle:hover { color: var(--text); border-color: var(--accent); }
+.session-delete { opacity: 0.55; }
+.session-item:hover .session-delete,
+.session-item:focus-within .session-delete { opacity: 1; }
+.session-item:focus-visible,
+.session-toggle:focus-visible,
+.session-delete:focus-visible,
+.agent-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.agent-list { gap: 7px; }
+.agent-row { border-color: var(--border-strong); background: var(--surface-2); }
+.agent-row:hover { border-color: var(--accent); background: var(--surface-3); }
+.agent-row.is-active { border-color: var(--accent); background: var(--accent-soft); }
+.agent-row.is-child {
+  margin-left: 24px;
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+}
+.agent-row.is-child::before { border-color: var(--accent); }
+.agent-state-icon { color: var(--text-dim); background: var(--surface-3); }
+.agent-row.is-code .agent-state-icon,
+.agent-row.is-terminal .agent-state-icon,
+.agent-row.is-mcp .agent-state-icon { color: var(--green); }
+.agent-row.is-read .agent-state-icon,
+.agent-row.is-search .agent-state-icon { color: var(--accent); }
+.agent-row.is-think .agent-state-icon { color: var(--purple); }
+.agent-row.is-wait .agent-state-icon { color: var(--amber); }
+.agent-row.is-error .agent-state-icon { color: var(--red); }
+.agent-chip { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-dim); }
+.agent-chip.is-tool { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.agent-chip.is-primary { border-color: var(--amber); background: var(--amber-soft); color: var(--amber); }
+.agent-chip.is-subagent { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.agent-chip.is-warn { border-color: var(--amber); background: var(--amber-soft); color: var(--amber); }
+.agent-row-title { color: var(--text); }
+.agent-state-text { color: var(--text-dim); }
+.agent-elapsed { color: var(--muted); }

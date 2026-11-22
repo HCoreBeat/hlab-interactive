@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>HLab Interactive</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/chat.css">
+  <link rel="stylesheet" href="css/panels.css">
+  <link rel="stylesheet" href="css/workspace.css">
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/pixelart.css">
+  <link rel="stylesheet" href="css/office-v2.css">
+  <link rel="stylesheet" href="css/notes.css">
+  <link rel="stylesheet" href="css/chat-v2.css">
+  <link rel="stylesheet" href="css/ui-v2.css">
+  <link rel="stylesheet" href="css/palette.css">
+  <link rel="stylesheet" href="css/quota.css">
+  <link rel="stylesheet" href="css/office-door.css">
+  <link rel="stylesheet" href="css/office-fp.css">
+  <link rel="stylesheet" href="css/theme-v2.css">
+  <link rel="stylesheet" href="css/perf.css">
+  <link rel="stylesheet" href="css/attachments.css">
+  <link rel="stylesheet" href="css/design.css">
+  <link rel="stylesheet" href="css/sessions-panel.css">
+  <link rel="stylesheet" href="css/light-fixes.css">
+  <link rel="stylesheet" href="css/titlebar.css">
+  <link rel="stylesheet" href="css/agent-picker.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">HL</span>
+        <span class="brand-name">HLab Interactive</span>
+      </div>
+
+      <div class="server-status" id="server-status" role="status" title="Estado del servidor">
+        <span class="dot" aria-hidden="true"></span>
+        <span class="server-text">Iniciando…</span>
+        <button class="btn-icon tiny" id="server-restart" type="button" aria-label="Reiniciar servidor" title="Reiniciar servidor">⟳</button>
+      </div>
+
+      <div class="project-switcher" id="project-switcher">
+        <button class="project-chip" id="project-chip" type="button" aria-haspopup="menu" aria-expanded="false" title="Cambiar de proyecto">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          <span id="project-chip-name">Sin proyecto</span>
+          <svg class="project-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+        </button>
+        <div class="project-menu" id="project-menu" role="menu" hidden></div>
+      </div>
+
+      <span class="muted tiny" id="app-version"></span>
+
+      <div class="spacer"></div>
+
+      <div class="agent-picker" id="agent-picker">
+        <button class="select-wrap agent-select-button" id="agent-select" type="button"
+          aria-haspopup="listbox" aria-expanded="false" aria-label="Agente" title="Agente">
+          <span>Agente</span>
+          <span class="agent-select-value" id="agent-select-value">—</span>
+          <span class="agent-select-chevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="agent-menu" id="agent-menu" role="listbox" aria-label="Agentes" hidden>
+          <input class="agent-menu-search" id="agent-menu-search" type="text"
+            placeholder="Buscar agente…" aria-label="Buscar agente" autocomplete="off">
+          <div class="agent-menu-list" id="agent-menu-list"></div>
+        </div>
+      </div>
+
+      <button class="select-wrap model-select-button" id="model-select" type="button" aria-label="Seleccionar modelo" title="Seleccionar modelo">
+        <span>Modelo</span>
+        <span class="model-select-value">Sin modelos</span>
+        <span class="model-select-chevron" aria-hidden="true">▾</span>
+      </button>
+
+      <button class="select-wrap palette-btn" id="palette-btn" type="button" aria-label="Abrir comandos de OpenCode" title="Comandos de OpenCode (Ctrl+P)">
+        <span>Comandos</span>
+        <kbd>Ctrl P</kbd>
+      </button>
+
+      <button class="btn-icon" id="undo-btn" type="button" aria-label="Deshacer último cambio" title="Deshacer último cambio">↶</button>
+      <button class="btn-icon" id="theme-btn" type="button" aria-label="Cambiar tema" title="Cambiar tema">◐</button>
+      <button class="btn-icon" id="settings-btn" type="button" aria-label="Ajustes" title="Ajustes (Ctrl+,)">⚙</button>
+
+      <div class="window-controls" role="group" aria-label="Controles de ventana">
+        <button class="window-control" id="win-min" type="button" aria-label="Minimizar" title="Minimizar">−</button>
+        <button class="window-control" id="win-max" type="button" aria-label="Maximizar" title="Maximizar">□</button>
+        <button class="window-control is-close" id="win-close" type="button" aria-label="Cerrar ventana" title="Cerrar ventana">×</button>
+      </div>
+    </header>
+
+    <aside class="rail" id="rail" aria-label="Vistas">
+      <nav class="activity-bar" id="activity-bar" aria-label="Barra de actividad"></nav>
+      <section class="side-panel" id="side-panel" aria-label="Panel lateral">
+        <div class="side-panel-head">
+          <span class="side-panel-title" id="side-panel-title">Sesiones</span>
+          <div class="spacer"></div>
+          <button class="btn-icon tiny" id="side-panel-close" type="button" aria-label="Cerrar panel" title="Cerrar el panel (Ctrl+B)">✕</button>
+        </div>
+        <div class="side-panel-body" id="panel-body"></div>
+      </section>
+      <div class="grip grip-x" id="side-grip" title="Arrastra para redimensionar · doble clic para restaurar"></div>
+    </aside>
+
+    <main class="editor" id="editor">
+      <section class="chat" id="chat" aria-label="Chat">
+        <div class="chat-scroll" id="chat-scroll" role="log" aria-live="polite">
+          <div class="chat-head">
+            <h2 id="chat-title">Chat</h2>
+            <span class="muted tiny" id="chat-subtitle"></span>
+            <div class="spacer"></div>
+            <div class="chat-live" id="chat-live" aria-live="polite" hidden></div>
+            <button class="btn-small" id="chat-discard" type="button" title="Descartar el cambio preparado con «Deshacer» (si quedó a medias)">Descartar preparado</button>
+            <button class="btn-small" id="chat-clear" type="button" title="Limpiar la vista (no borra el historial)">Limpiar vista</button>
+            <button class="btn-small" id="chat-terminal" type="button" title="Abrir la terminal del agente (Ctrl+J)">💻 Terminal</button>
+          </div>
+        </div>
+        <div class="composer" id="composer">
+          <div class="composer-autocomplete" id="autocomplete" hidden></div>
+          <textarea id="prompt-input" rows="1" placeholder="Escribe un mensaje…  (Enter envía, Shift+Enter salto de línea, / comandos, ! shell)"
+                    aria-label="Mensaje para el agente"></textarea>
+          <div class="composer-actions">
+            <span class="composer-hint" id="composer-hint"></span>
+            <button class="btn-primary" id="send-btn" type="button">Enviar</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="office" id="office" aria-label="HLab Interactive">
+        <div class="office-head">
+          <h2>HLab Interactive</h2>
+          <span class="muted tiny" id="office-summary"></span>
+          <div class="spacer"></div>
+          <button class="office-fp-enter" id="office-fp-enter" type="button" title="Entrar en la oficina en primera persona (F)" aria-label="Entrar en la oficina en primera persona">Entrar</button>
+          <button class="btn-icon tiny" id="office-zoom-out" type="button" aria-label="Alejar" title="Alejar (Ctrl+-)">−</button>
+          <span class="muted tiny" id="office-zoom" title="Zoom de la oficina">100%</span>
+          <button class="btn-icon tiny" id="office-zoom-in" type="button" aria-label="Acercar" title="Acercar (Ctrl+=)">＋</button>
+          <button class="btn-icon tiny" id="office-zoom-fit" type="button" aria-label="Ajustar" title="Ajustar al ancho">⤢</button>
+          <button class="btn-icon tiny" id="office-close" type="button" aria-label="Cerrar la oficina" title="Cerrar la oficina (Ctrl+Shift+O)">✕</button>
+        </div>
+        <div class="office-body">
+          <div class="office-room" id="office-room"></div>
+        </div>
+        <div class="grip grip-y" id="office-grip" title="Arrastra para redimensionar · doble clic para restaurar"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="permission-root" class="permission-stack" aria-live="assertive"></div>
+  <div id="toast-root" class="toast-root" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/util/no-emoji.js"></script>
+</body>
+</html>

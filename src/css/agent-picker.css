@@ -1,0 +1,133 @@
+/* ==========================================================================
+   Selector de agentes propio (reemplaza al <select> nativo: su desplegable y
+   su tooltip del SO no encajaban con el tema ni con la barra superior).
+   ========================================================================== */
+
+.topbar { z-index: 50; }
+
+.agent-picker {
+  position: relative;
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.agent-select-button {
+  min-width: 0;
+  max-width: 260px;
+  cursor: pointer;
+}
+.agent-select-value {
+  min-width: 0;
+  max-width: 175px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.agent-select-button[aria-expanded="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.agent-select-button:disabled { opacity: 0.6; cursor: default; }
+
+.agent-menu {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 80;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: max(300px, 100%);
+  max-height: min(70vh, 520px);
+  padding: 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow, 0 16px 40px rgba(0, 0, 0, 0.35));
+  overflow: hidden;
+}
+.agent-menu[hidden] { display: none; }
+
+.agent-menu-search {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.78rem;
+  outline: none;
+}
+.agent-menu-search:focus { border-color: var(--accent); }
+.agent-menu-search::placeholder { color: var(--muted); }
+
+.agent-menu-list { overflow-y: auto; padding-right: 2px; }
+.agent-menu-section + .agent-menu-section {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.agent-menu-section[hidden] { display: none; }
+.agent-menu-section h4 {
+  margin: 0 0 4px;
+  padding: 0 9px;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.agent-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}
+.agent-menu-item:hover { background: var(--surface-3); }
+.agent-menu-item.is-selected {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent);
+}
+.agent-menu-item.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.agent-menu-item.is-disabled:hover { background: transparent; }
+.agent-menu-item[hidden] { display: none; }
+.agent-menu-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-menu-id {
+  color: var(--muted);
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 0.64rem;
+}
+.agent-menu-check { color: var(--accent); font-weight: 800; }
+.agent-menu-empty {
+  padding: 16px 10px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-align: center;
+}
+
+/* layout.css oculta los spans de .select-wrap en pantallas estrechas; aquí el
+   valor del agente debe seguir visible. */
+@media (max-width: 980px) {
+  .agent-select-button .agent-select-value { display: block; }
+}

@@ -1,0 +1,376 @@
+/* ============================================================ barra superior ==== */
+
+.topbar {
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--bg-deep, var(--bg)) 100%);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.topbar .brand { display: flex; align-items: center; gap: 9px; padding-right: 6px; }
+.topbar .brand-name { font-size: 0.82rem; font-weight: 700; letter-spacing: 0.02em; }
+.topbar .brand-mark {
+  box-shadow: 0 0 0 1px rgba(240, 180, 94, 0.35), 0 0 14px rgba(240, 180, 94, 0.18);
+}
+
+/* Todos los controles comparten altura, borde y radio */
+.topbar .server-status,
+.topbar .project-chip,
+.topbar .select-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-size: 0.76rem;
+  color: var(--text);
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+.topbar .server-status { padding-right: 4px; }
+.topbar .project-chip { cursor: pointer; max-width: 220px; }
+.topbar .project-chip:hover,
+.topbar .select-wrap:hover,
+.topbar .select-wrap:focus-within { border-color: var(--accent); background: var(--surface-3, var(--surface-2)); }
+.topbar .select-wrap:focus-within { box-shadow: 0 0 0 3px var(--accent-soft); }
+.topbar .project-chip svg { width: 15px; height: 15px; flex: none; opacity: 0.85; }
+#project-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+
+.topbar .select-wrap { padding: 0 4px 0 10px; }
+.topbar .select-wrap > span {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.topbar .select-wrap select {
+  max-width: 190px;
+  height: 28px;
+  padding: 0 6px;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.topbar .select-wrap select option { background: var(--surface); color: var(--text); }
+
+.topbar .btn-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: border-color 140ms ease, background 140ms ease, transform 100ms ease;
+}
+.topbar .btn-icon:hover { border-color: var(--accent); background: var(--accent-soft); }
+.topbar .btn-icon:active { transform: scale(0.94); }
+.topbar .btn-icon.tiny { width: 24px; height: 24px; border: 0; background: transparent; }
+
+#app-version {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+}
+
+/* ============================================================ panel lateral ==== */
+
+/* sin botón "añadir vista": la cabecera de columna vacía no ocupa espacio */
+.panel-column-tabs:empty { display: none; }
+
+/* ================================================================ oficina ==== */
+
+.office-head {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border-bottom: 1px solid var(--border);
+}
+.office-head h2 { letter-spacing: 0.04em; }
+.office-head #office-summary {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+}
+
+.office-stage {
+  box-shadow: 0 0 0 1px var(--border-strong, var(--border)), 0 0 0 5px rgba(0, 0, 0, 0.25), 0 18px 48px rgba(0, 0, 0, 0.6);
+}
+
+.office-room-tag {
+  font-weight: 700;
+  color: rgba(240, 244, 255, 0.82);
+  background: rgba(8, 10, 16, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 2px 9px;
+  backdrop-filter: blur(2px);
+  transition: color 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+.office-room-tag.is-active {
+  color: #ffe2b0;
+  border-color: rgba(240, 180, 94, 0.6);
+  box-shadow: 0 0 10px rgba(240, 180, 94, 0.25);
+}
+
+.office-sound-btn {
+  transition: transform 100ms ease, background 140ms ease, border-color 140ms ease;
+}
+.office-sound-btn:hover { transform: scale(1.08); }
+
+/* ======================================================= comandos / vista OpenCode ==== */
+
+.topbar .palette-btn { cursor: pointer; padding: 0 8px 0 10px; }
+.topbar .palette-btn kbd {
+  padding: 1px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--border-strong, var(--border));
+  background: var(--bg);
+  color: var(--text-dim, var(--muted));
+  font: 600 0.62rem var(--mono, monospace);
+}
+.topbar .palette-btn:hover kbd { color: var(--accent); border-color: var(--accent); }
+
+.app[data-hide-thinking="on"] .block-reasoning { display: none; }
+.app[data-hide-tools="on"] .tool-card .tool-diffs,
+.app[data-hide-tools="on"] .tool-card pre { display: none; }
+
+/* ======================================================= archivos modificados por sesión / task ==== */
+
+.modified-list-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.modified-scope {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim, var(--muted));
+  font: 600 0.62rem var(--sans, inherit);
+  padding: 2px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.modified-scope:hover { border-color: var(--accent); color: var(--accent); }
+
+.modified-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border-left: 3px solid var(--accent);
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+.modified-group.is-sub { border-left-color: var(--amber); }
+.modified-group:hover { background: var(--surface-3, var(--surface-2)); }
+.modified-caret { width: 10px; color: var(--muted); }
+.modified-group-name { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modified-group-tag {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.modified-group.is-sub .modified-group-tag { color: var(--amber); }
+.modified-group-count { min-width: 16px; text-align: center; font-weight: 700; color: var(--text-dim, var(--muted)); }
+
+/* ======================================================= permisos (shell) con texto largo ==== */
+
+/* La pila nunca se sale de la ventana y hace scroll si hay varios permisos */
+#permission-root {
+  max-height: calc(100vh - 72px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* La tarjeta limita su alto: el cuerpo hace scroll y los botones quedan siempre a la vista */
+#permission-root .permission-card {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  max-height: min(72vh, 620px);
+  min-width: 0;
+  overflow: hidden;
+}
+#permission-root .permission-card > header { flex: none; }
+#permission-root .permission-card > .body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+#permission-root .permission-card > footer {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -8px 14px rgba(0, 0, 0, 0.25);
+}
+#permission-root .permission-card > footer button { flex: 1 1 auto; min-height: 32px; }
+
+/* Comando largo: caja con altura máxima, scroll propio y saltos de línea */
+#permission-root .permission-card .resource {
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  overscroll-behavior: contain;
+}
+#permission-root .permission-card details { max-height: 220px; overflow: auto; }
+
+/* ======================================================= preguntas del agente ==== */
+
+#question-root {
+  position: fixed;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  z-index: 1600;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(660px, 94vw);
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+#question-root[hidden] { display: none; }
+#question-root .question-card {
+  display: flex;
+  flex-direction: column;
+  max-height: min(72vh, 640px);
+  border: 1px solid var(--accent);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 0 0 3px var(--accent-soft);
+  background: var(--surface);
+  overflow: hidden;
+  animation: att-in 180ms ease both;
+}
+#question-root .question-card > .body { overflow: auto; display: grid; gap: 14px; padding: 12px 14px; }
+#question-root .question-card > footer { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); background: var(--surface); }
+#question-root .question-card > footer button { flex: 1 1 auto; min-height: 34px; }
+#question-root .question-card > footer button[disabled] { opacity: 0.5; cursor: not-allowed; }
+.q-block { display: grid; gap: 8px; }
+.q-chip { justify-self: start; padding: 1px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.q-text { font-size: 0.9rem; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+.q-options { display: grid; gap: 6px; }
+.q-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  text-align: left;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, transform 100ms ease;
+}
+.q-option:hover { border-color: var(--accent); }
+.q-option:active { transform: scale(0.99); }
+.q-option.is-on { border-color: var(--accent); background: var(--accent-soft); }
+.q-mark { flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin-top: 1px; border: 2px solid var(--border-strong); border-radius: 50%; font-size: 0.6rem; color: var(--accent); }
+.q-mark.is-check { border-radius: 5px; font-size: 0.7rem; font-weight: 800; }
+.q-option.is-on .q-mark { border-color: var(--accent); }
+.q-copy { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.q-copy strong { font-size: 0.82rem; }
+.q-custom {
+  height: 34px;
+  padding: 0 10px;
+  background: var(--bg);
+  border: 1px dashed var(--border-strong);
+  border-radius: 10px;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+}
+.q-custom:focus { outline: none; border-color: var(--accent); border-style: solid; box-shadow: 0 0 0 3px var(--accent-soft); }
+
+#permission-root .permission-card details { max-height: 220px; overflow: auto; }
+
+/* ======================================================= botones: el texto nunca se sale ==== */
+
+.btn-small,
+.btn-primary,
+.btn-ghost,
+.tab,
+.copy-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  min-height: 28px;
+  max-width: 100%;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-align: center;
+}
+.btn-small { padding: 4px 12px; }
+.btn-primary { min-height: 34px; padding: 7px 16px; }
+.btn-ghost { padding: 5px 10px; }
+
+/* los iconos con texto o símbolos crecen en vez de desbordarse */
+.btn-icon {
+  flex: none;
+  box-sizing: border-box;
+  min-width: 32px;
+  width: auto;
+  height: 32px;
+  padding: 0 6px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.btn-icon.tiny { min-width: 22px; width: auto; height: 22px; padding: 0 4px; }
+.btn-icon svg,
+.btn-small svg,
+.btn-primary svg { flex: none; }
+
+button[disabled],
+.btn-small[disabled],
+.btn-primary[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+/* contadores y números alineados */
+.quota-chip, .door-count, .notes-count, .command-cat-count, .modified-group-count { font-variant-numeric: tabular-nums; }
+
+/* ======================================================= pulido general ==== */
+
+.modal { animation: modal-in 170ms cubic-bezier(.2,.8,.25,1) both; }
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+.modal-backdrop { backdrop-filter: blur(3px); }
+.toast { backdrop-filter: blur(6px); }
+
+html { scroll-behavior: smooth; }
+.app[data-animations="off"] .modal,
+.app[data-animations="off"] .toast { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .modal, .toast, .office-stage { animation: none !important; transition: none !important; }
+}

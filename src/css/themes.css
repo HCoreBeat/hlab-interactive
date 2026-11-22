@@ -1,0 +1,138 @@
+/* ================================================================ light ==== */
+
+html[data-theme="light"],
+.app[data-theme="light"] {
+  --bg-deep: #e9edf4;
+  --bg: #f7f9fc;
+  --surface: #ffffff;
+  --surface-2: #f1f4f9;
+  --surface-3: #e4e9f1;
+  --border: #dce2eb;
+  --border-strong: #c3cddb;
+  --text: #1b2230;
+  --text-dim: #45505f;
+  --muted: #6f7b8c;
+  --accent: #2f6fed;
+  --accent-soft: rgba(47, 111, 237, 0.1);
+  --amber: #b5761a;
+  --amber-soft: rgba(181, 118, 26, 0.12);
+  --green: #16865f;
+  --green-soft: rgba(22, 134, 95, 0.1);
+  --red: #c8402f;
+  --red-soft: rgba(200, 64, 47, 0.1);
+  --yellow: #b98a00;
+  --purple: #6f4fd6;
+  --code-comment: #687487;
+  --code-keyword: #8042b2;
+  --code-string: #287749;
+  --code-number: #9b5b15;
+  --code-function: #205cb5;
+  --code-tag: #a22d3c;
+  --code-property: #835900;
+  --code-meta: #087c83;
+  --shadow: 0 12px 32px rgba(20, 32, 56, 0.14);
+}
+
+html[data-theme="light"] body { background: var(--bg-deep); }
+html[data-theme="light"] .server-status {
+  background: #f8fafc;
+  border-color: #cbd4e1;
+  color: #263348;
+  box-shadow: 0 1px 2px rgba(25, 40, 65, 0.08);
+}
+html[data-theme="light"] .server-status .server-text { color: #263348; font-weight: 600; }
+html[data-theme="light"] .server-status .dot.ok { background: #13845f; box-shadow: 0 0 0 3px rgba(19, 132, 95, 0.13); }
+html[data-theme="light"] .server-status .dot.warn { background: #a56b00; box-shadow: 0 0 0 3px rgba(165, 107, 0, 0.12); }
+html[data-theme="light"] .office-room {
+  background: radial-gradient(circle at 50% 45%, #e7ecf5 0%, #cfd6e4 100%);
+}
+html[data-theme="light"] .code-block code { color: #1d2735; }
+html[data-theme="light"] .diff-line.add .code { color: #0d6b48; }
+html[data-theme="light"] .diff-line.del .code { color: #9c2b1c; }
+html[data-theme="light"] .msg-error .bubble { color: #8a1c10; }
+html[data-theme="light"] .screen .code-lines i { background: rgba(22, 134, 95, 0.8); }
+
+/* ============================================================ font size ==== */
+
+.app { font-size: var(--font-size); }
+
+/* ============================================================== welcome ==== */
+
+.welcome {
+  position: fixed;
+  top: 50px;
+  left: 264px;
+  right: 0;
+  bottom: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(80% 50% at 50% 0%, rgba(240, 180, 94, 0.08), transparent 70%),
+    var(--bg);
+  overflow: auto;
+}
+
+@media (max-width: 1180px) {
+  .welcome { left: 230px; }
+}
+
+.welcome-card {
+  width: min(560px, 100%);
+  text-align: center;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+.welcome-card .logo { font-size: 2.4rem; }
+.welcome-card h1 { font-size: 1.15rem; font-weight: 600; }
+.welcome-card p { color: var(--text-dim); font-size: 0.85rem; margin: 0; }
+.welcome-card .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+.welcome-card .error-box {
+  margin-top: 6px;
+  width: 100%;
+  text-align: left;
+  background: var(--red-soft);
+  border: 1px solid rgba(244, 121, 111, 0.4);
+  border-radius: 9px;
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+}
+.welcome-card .hint-list {
+  text-align: left;
+  font-size: 0.78rem;
+  color: var(--muted);
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  margin-top: 4px;
+}
+.welcome-card .hint-list code {
+  font-family: var(--mono);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
+/* ============================================================ accessibility ==== */
+
+.app[data-animations="off"] *,
+.app[data-animations="off"] *::before,
+.app[data-animations="off"] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app *, .app *::before, .app *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

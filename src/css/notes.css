@@ -1,0 +1,269 @@
+/* ============================================================ notas del proyecto ==== */
+
+.notes-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ---- resumen / progreso */
+.notes-summary {
+  display: grid;
+  gap: 7px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.notes-summary-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.notes-summary-top strong { font-size: 0.9rem; letter-spacing: 0.01em; }
+.notes-progress { height: 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+.notes-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--green));
+  transition: width 360ms cubic-bezier(.2,.75,.25,1);
+}
+
+/* ---- añadir */
+.notes-add {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.notes-add:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.notes-input,
+.notes-edit {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 46px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+.notes-input { border-color: transparent; background: transparent; padding: 2px 2px 4px; }
+.notes-input:focus { outline: none; }
+.notes-edit:focus { outline: none; border-color: var(--accent); }
+
+.notes-add-row { display: flex; align-items: center; gap: 8px; }
+
+.notes-seg {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.notes-seg-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: 600 0.66rem var(--sans, inherit);
+  padding: 4px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.notes-seg-btn:hover { color: var(--text); }
+.notes-seg-btn.is-on { color: #10131a; }
+.notes-seg-btn.prio-alta.is-on { background: var(--red); }
+.notes-seg-btn.prio-normal.is-on { background: var(--amber); }
+.notes-seg-btn.prio-baja.is-on { background: var(--green); }
+
+.notes-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  appearance: none;
+  border: 0;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #08111f;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 120ms ease, transform 100ms ease;
+}
+.notes-add-btn:hover { filter: brightness(1.1); }
+.notes-add-btn:active { transform: scale(0.95); }
+
+/* ---- filtros */
+.notes-toolbar { display: flex; }
+.notes-tabs {
+  display: flex;
+  width: 100%;
+  padding: 3px;
+  gap: 3px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.notes-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 5px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.notes-tab:hover { color: var(--text); }
+.notes-tab.is-on { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); }
+.notes-count {
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.6rem;
+  line-height: 16px;
+  text-align: center;
+}
+.notes-tab.is-on .notes-count { background: var(--accent-soft); color: var(--accent); }
+
+/* ---- acciones masivas */
+.notes-bulk { display: flex; gap: 8px; flex-wrap: wrap; }
+.notes-send,
+.notes-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  appearance: none;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 120ms ease, border-color 120ms ease, transform 100ms ease;
+}
+.notes-send { flex: 1; justify-content: center; border: 1px solid var(--amber); background: var(--amber-soft); color: var(--amber); }
+.notes-send:hover { filter: brightness(1.2); }
+.notes-clear { border: 1px solid var(--border); background: transparent; color: var(--muted); }
+.notes-clear:hover { border-color: var(--red); color: var(--red); }
+.notes-send:active,
+.notes-clear:active { transform: scale(0.97); }
+
+/* ---- lista */
+.notes-list { display: grid; gap: 8px; }
+
+.notes-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 8px 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--muted);
+  border-radius: 10px;
+  animation: note-in 200ms cubic-bezier(.2,.75,.25,1) both;
+  transition: border-color 140ms ease, background 140ms ease, opacity 200ms ease;
+}
+.notes-item:hover { border-color: var(--border-strong); border-left-color: inherit; background: var(--surface-3, var(--surface-2)); }
+.notes-item.prio-alta { border-left-color: var(--red); }
+.notes-item.prio-normal { border-left-color: var(--amber); }
+.notes-item.prio-baja { border-left-color: var(--green); }
+.notes-item.is-done { opacity: 0.55; border-left-color: var(--border-strong); }
+.notes-item.is-done .notes-text { text-decoration: line-through; }
+@keyframes note-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.notes-check { margin: 2px 0 0; width: 15px; height: 15px; accent-color: var(--green); cursor: pointer; }
+
+.notes-main { min-width: 0; display: grid; gap: 6px; }
+.notes-text {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+
+.notes-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.notes-chip {
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.notes-chip.prio-alta { color: var(--red); background: var(--red-soft); border-color: rgba(244, 121, 111, 0.35); }
+.notes-chip.prio-normal { color: var(--amber); background: var(--amber-soft); border-color: rgba(240, 180, 94, 0.35); }
+.notes-chip.prio-baja { color: var(--green); background: var(--green-soft); border-color: rgba(85, 211, 164, 0.35); }
+.notes-chip.is-review { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); animation: note-pulse 1.8s ease-in-out infinite; }
+@keyframes note-pulse { 50% { opacity: 0.55; } }
+.notes-time { font-size: 0.62rem; color: var(--muted); }
+
+.notes-actions { display: flex; gap: 2px; opacity: 0; transition: opacity 140ms ease; }
+.notes-item:hover .notes-actions,
+.notes-item:focus-within .notes-actions { opacity: 1; }
+.notes-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  appearance: none;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.notes-act:hover { background: var(--accent-soft); color: var(--accent); }
+.notes-act.is-danger:hover { background: var(--red-soft); color: var(--red); }
+
+/* ---- vacío */
+.notes-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 26px 12px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+.notes-empty svg { opacity: 0.6; }
+
+.app[data-animations="off"] .notes-item,
+.app[data-animations="off"] .notes-chip { animation: none; }
+
+/* ---- carteles de la oficina: rol completo y sin flecha cuando se colocan debajo */
+.office-overlay .office-agent-tag:not(.is-expanded) { max-width: 170px; }
+.office-overlay .office-agent-tag.is-below::after { display: none; }

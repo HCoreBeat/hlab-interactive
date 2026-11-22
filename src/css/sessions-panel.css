@@ -1,0 +1,354 @@
+/* ==========================================================================
+   Sesiones: estilos definitivos de las tarjetas y de los marcadores de
+   trabajo en otros proyectos. Se carga DESPUÉS de design.css para ganar a las
+   reglas heredadas de layout.css / office-v2.css sin tocarlas.
+   ========================================================================== */
+
+/* ------------------------------------------------------------- tarjetas -- */
+
+.session-list.sp-list,
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 10px 16px;
+  overflow-x: hidden; /* el conector de los subagentes no debe crear scroll horizontal */
+}
+
+/* Un grupo = una sesión principal + sus subagentes dentro de la misma tarjeta. */
+.sp-group {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface-2);
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+/* Riel de estado: un solo trazo para toda la tarjeta, también para sus hijos. */
+.sp-group::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 11px;
+  bottom: 11px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--border-strong);
+}
+
+.sp-group:hover { border-color: var(--border-strong); }
+
+.sp-group.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+.sp-group.is-busy::before { background: var(--amber); }
+.sp-group.is-permission::before { background: var(--purple); }
+.sp-group.is-error::before { background: var(--red); }
+.sp-group.is-done::before { background: var(--green); }
+.sp-group.is-active::before { background: var(--accent); }
+
+/* La tarjeta principal dentro del grupo no dibuja otra tarjeta. */
+.sp-group > .session-item.sp-item {
+  width: 100%;
+  padding: 10px 11px 10px 15px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.sp-group > .session-item.sp-item::before { display: none; }
+.sp-group > .session-item.sp-item:hover { background: transparent; }
+.sp-group > .session-item.sp-item.is-active { box-shadow: none; }
+
+.session-item.sp-item {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface-2);
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+.session-item.sp-item:active { transform: none; }
+
+/* --- primera línea: tirador, título y borrar ---------------------------- */
+
+.sp-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.sp-toggle {
+  flex: none;
+  min-width: 0;
+  padding: 1px 3px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-dim);
+  font: 700 0.62rem/1.5 var(--mono, ui-monospace, monospace);
+  cursor: pointer;
+}
+.sp-toggle:hover { color: var(--accent); background: var(--surface-3); }
+.sp-toggle.has-work { color: var(--amber); }
+
+.sp-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.sp-delete {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
+}
+.sp-delete svg { width: 14px; height: 14px; }
+.session-item.sp-item:hover .sp-delete,
+.session-item.sp-item:focus-within .sp-delete { opacity: 1; }
+.sp-delete:hover { background: var(--red-soft); color: var(--red); }
+
+/* --- segunda línea: rol, agente y estado -------------------------------- */
+
+.sp-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 6px;
+}
+
+.sp-role {
+  flex: none;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font: 700 0.56rem/1.4 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.sp-role.is-primary { background: var(--accent-soft); color: var(--accent); }
+
+.sp-agent {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 34%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+  font: 600 0.64rem/1.4 var(--mono, ui-monospace, monospace);
+}
+
+.sp-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  min-width: 0;
+  max-width: 100%;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.64rem;
+  white-space: nowrap;
+}
+.sp-status-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.sp-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+.sp-status.is-busy { color: var(--amber); }
+.sp-status.is-busy .sp-dot { background: var(--amber); animation: sp-pulse 1.6s ease-in-out infinite; }
+.sp-status.is-permission { color: var(--purple); }
+.sp-status.is-permission .sp-dot { background: var(--purple); animation: sp-pulse 1.3s ease-in-out infinite; }
+.sp-status.is-error { color: var(--red); }
+.sp-status.is-error .sp-dot { background: var(--red); }
+.sp-status.is-done { color: var(--green); }
+.sp-status.is-done .sp-dot { background: var(--green); }
+
+/* --- subagentes: filas compactas dentro de la tarjeta del padre --------- */
+
+.sp-children {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 4px 8px 7px 10px;
+  list-style: none;
+  background: transparent;
+  border-top: 1px solid var(--border);
+}
+
+.session-item.sp-item.is-child {
+  margin: 0 0 0 8px;
+  padding: 5px 8px 5px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+}
+.session-item.sp-item.is-child::before,
+.session-item.sp-item.is-child::after { content: none; }
+.session-item.sp-item.is-child:hover {
+  background: var(--surface-3);
+  border-color: var(--border);
+}
+.session-item.sp-item.is-child.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent-soft);
+}
+.session-item.sp-item.is-child.is-busy { border-color: var(--amber-soft); }
+
+.sp-child-row {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  width: 100%;
+}
+.sp-child-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.session-item.is-child.is-active .sp-child-title,
+.session-item.is-child.is-busy .sp-child-title { color: var(--text); }
+
+.sp-child-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.sp-child-meta .sp-agent { max-width: 50%; font-size: 0.6rem; }
+.sp-child-meta .sp-status {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: 0;
+  max-width: 100%;
+  font-size: 0.6rem;
+}
+
+/* --- archivar finalizados ----------------------------------------------- */
+
+.session-clean-row { list-style: none; margin: 2px 0 0 8px; }
+.session-clean {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.64rem;
+  cursor: pointer;
+}
+.session-clean:hover { border-color: var(--red); color: var(--red); }
+
+.sp-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 22px 10px;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* ------------------------------------------- proyectos con trabajo vivo -- */
+
+.recent-item.has-work { color: var(--text); }
+.sp-recent-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-work-mark,
+.project-work-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--amber-soft);
+  color: var(--amber);
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.sp-work-mark[hidden],
+.project-work-mark[hidden] { display: none; }
+
+.sp-work-dot,
+.project-work-dot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+  animation: sp-pulse 1.6s ease-in-out infinite;
+}
+
+.project-chip.has-work { border-color: var(--amber); }
+
+.sp-activity-mark {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 0 2px var(--bg-deep);
+  pointer-events: none;
+  animation: sp-pulse 1.6s ease-in-out infinite;
+}
+.sp-activity-mark[hidden] { display: none; }
+
+@keyframes sp-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.78); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-dot, .sp-work-dot, .project-work-dot, .sp-activity-mark { animation: none !important; }
+  .session-item.sp-item, .sp-group, .sp-delete { transition: none !important; }
+}

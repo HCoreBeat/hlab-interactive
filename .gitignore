@@ -1,0 +1,35 @@
+# Dependencias y artefactos generados
+node_modules/
+dist/
+out/
+coverage/
+test-results/
+
+# Generados por npm start / npm run dist (se regeneran solos)
+src/js/i18n/catalogs.js
+src/js/util/highlight-engine.bundle.js
+
+# Secretos y certificados (NUNCA subir)
+*.pfx
+*.p12
+*.key
+*.pem
+.env
+.env.*
+!.env.example
+build/cert.pfx
+
+# Logs y temporales
+*.log
+output.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+oc-ui-check/
+
+PROMPT.md
+
+# Editores
+.vscode/
+.idea/

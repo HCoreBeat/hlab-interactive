@@ -1,0 +1,68 @@
+/* ============================================================ rendimiento (sin quitar estilos ni animaciones) ==== */
+
+/* backdrop-filter obliga a re-muestrear lo que hay detr\u00e1s en cada fotograma
+   (y detr\u00e1s hay un canvas animado). Se sustituye por fondos algo m\u00e1s opacos. */
+*, *::before, *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.modal-backdrop,
+.command-palette-backdrop { background: rgba(4, 7, 12, 0.74); }
+html[data-theme="light"] .modal-backdrop,
+html[data-theme="light"] .command-palette-backdrop { background: rgba(20, 30, 50, 0.45); }
+.office-room-tag { background: rgba(8, 10, 16, 0.86); }
+.office-door-btn { background: rgba(14, 18, 27, 0.95); }
+.toast { background-color: var(--surface-2); }
+
+/* El navegador no pinta ni calcula el dise\u00f1o de los mensajes que est\u00e1n fuera de pantalla */
+.chat-scroll > .msg,
+#chat-scroll > .msg {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 140px;
+}
+
+/* Solo los avatares de los \u00faltimos mensajes tienen animaciones infinitas;
+   el historial queda est\u00e1tico (igual de bonito, sin cientos de animaciones a la vez) */
+/* Los ultimos mensajes siempre tienen su altura real: asi "Ir al final" no depende de estimaciones */
+#chat-scroll > .msg:nth-last-of-type(-n+12) { content-visibility: visible; }
+
+#chat-scroll > .msg:not(:nth-last-of-type(-n+3)) .msg-avatar *,
+#chat-scroll > .msg:not(:nth-last-of-type(-n+3)) .msg-avatar {
+  animation: none !important;
+  filter: none !important;
+}
+#chat-scroll > .msg:not(:nth-last-of-type(-n+3)) .msg-avatar::after { display: none; }
+#chat-scroll > .msg:not(:nth-last-of-type(-n+3)) .av-orbit { opacity: 0.25; }
+
+/* El razonamiento en curso se repinta muchas veces por segundo: sin animaciones de entrada que se
+   reinicien en cada repintado (eso era lo que hacía parpadear el texto). */
+.block-reasoning,
+.block-reasoning[open],
+.block-reasoning > *,
+.msg-assistant .bubble,
+.chat-error-banner { animation: none !important; }
+.msg-assistant:not(.is-entering) .bubble { transition: none; }
+.block-reasoning { overflow-anchor: none; }
+.block-reasoning[open] > div, .block-reasoning[open] > pre { max-height: 320px; overflow: auto; }
+
+/* Sesiones: el punto del agente que trabaja late para que se vea de un vistazo */
+.session-item.is-busy .session-dot { animation: live-dot 1.1s ease-in-out infinite; }
+.session-item.is-busy .session-meta { color: var(--amber); font-weight: 600; }
+.session-item.is-permission .session-meta { color: var(--purple); font-weight: 600; }
+
+/* Los halos animados con filter son caros: se limita a transform/opacity */
+.av-agent .av-eye, .av-agent .av-bulb { filter: none; }
+.av-agent .av-bulb { box-shadow: none; }
+
+/* Las etiquetas de la oficina se recalculan ~8 veces/s: la transici\u00f3n las desliza con suavidad */
+.office-agent-tag { will-change: transform; }
+.office-agent-tag.is-placed { transition: transform 130ms linear, opacity 160ms ease, background 160ms ease; }
+
+/* Contenci\u00f3n de layout: un cambio dentro de estos bloques no recalcula toda la ventana */
+.office-stage { contain: layout style; }
+.side-panel-body { contain: layout style; }
+#chat-scroll { overscroll-behavior: contain; }
+.notes-list, .modified-box, .command-palette-list { contain: layout style; }
+
+/* Con la oficina oculta el chat ocupa todo el alto (antes quedaba reservada su fila vacía) */
+.app.office-collapsed .editor { grid-template-rows: minmax(0, 1fr); }

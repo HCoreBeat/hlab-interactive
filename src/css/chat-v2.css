@@ -1,0 +1,219 @@
+/* ============================================================ chat v2: composer y animaciones ==== */
+
+/* Composer en una sola fila: textarea + botón Enviar compacto a la derecha */
+.composer {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 6px 8px;
+  padding: 8px 12px 8px;
+}
+.composer .composer-actions { display: contents; }
+.composer textarea {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 38px;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.composer textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.composer #send-btn {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  height: 38px;
+  min-width: 0;
+  width: auto;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  line-height: 1;
+  white-space: nowrap;
+  transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+.composer #send-btn:hover { filter: brightness(1.1); box-shadow: 0 4px 14px var(--accent-soft); transform: translateY(-1px); }
+.composer #send-btn:active { transform: translateY(0) scale(0.96); }
+.composer #send-btn[disabled] { opacity: 0.5; transform: none; box-shadow: none; }
+.composer .composer-hint {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  font-size: 0.66rem;
+  line-height: 1.2;
+}
+.composer .composer-hint:empty { display: none; }
+
+/* Mensajes: el del usuario entra desde la derecha, el del agente desde abajo */
+.msg.msg-user.is-entering { animation: msg-in-user 240ms cubic-bezier(.2,.75,.25,1) both; }
+@keyframes msg-in-user {
+  from { opacity: 0; transform: translateX(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+.msg.is-entering .bubble { transform-origin: left top; }
+.msg.msg-user.is-entering .bubble { transform-origin: right top; }
+
+/* Herramientas en ejecución: barrido de luz en el borde inferior */
+.tool-card { position: relative; transition: border-color 200ms ease, background 200ms ease; }
+.tool-card[data-status="running"]::after,
+.tool-card[data-status="streaming"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 38%;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: tool-sweep 1.3s ease-in-out infinite;
+}
+@keyframes tool-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(270%); }
+}
+.tool-card[data-status="error"] { animation: tool-shake 280ms ease 1; }
+@keyframes tool-shake {
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+/* Aparición suave de banners y botón de bajar. El razonamiento se actualiza en sitio. */
+.chat-error-banner { animation: msg-in 220ms ease both; }
+.chat-jump { animation: jump-pop 180ms cubic-bezier(.2,.9,.3,1.3) both; transition: color 120ms ease, transform 120ms ease; }
+.chat-jump:hover { transform: translateY(-1px); }
+@keyframes jump-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.9); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Autocompletado y botones de copiar */
+.composer-autocomplete { animation: ac-in 120ms ease both; }
+@keyframes ac-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.ac-item { transition: background 80ms ease; }
+.copy-code { transition: border-color 120ms ease, color 120ms ease, transform 100ms ease; }
+.copy-code:active { transform: scale(0.94); }
+
+/* Vida extra: avatar del agente respira mientras escribe, botón listo cuando hay texto */
+.msg:has(.streaming-caret) .msg-avatar-agent { animation: avatar-live 1.4s ease-in-out infinite; }
+@keyframes avatar-live {
+  50% { box-shadow: 0 0 0 5px rgba(240, 180, 94, 0.16), inset 0 0 14px rgba(240, 180, 94, 0.28); transform: scale(1.06); }
+}
+.msg:has(.streaming-caret) .bubble { border-color: rgba(240, 180, 94, 0.35); transition: border-color 300ms ease; }
+.streaming-caret::after { animation: caret 0.9s ease-in-out infinite; }
+
+.composer:has(textarea:not(:placeholder-shown)) #send-btn { animation: send-ready 2.2s ease-in-out infinite; }
+@keyframes send-ready {
+  50% { box-shadow: 0 0 0 4px var(--accent-soft); }
+}
+
+.chat-live { display: inline-flex; align-items: center; gap: 6px; }
+.chat-live::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+  animation: live-dot 1.1s ease-in-out infinite;
+}
+.chat-live[hidden]::before { display: none; }
+@keyframes live-dot {
+  0%, 100% { transform: scale(0.7); opacity: 0.5; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+
+.bubble { transition: border-color 160ms ease, box-shadow 160ms ease; }
+.msg:hover .bubble { border-color: var(--border-strong); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18); }
+
+/* ======================================================= robustez del contenido del chat ==== */
+
+/* Ningún modelo puede romper el ancho de la burbuja */
+.msg, .bubble, .block-text, .bubble > * { min-width: 0; max-width: 100%; }
+.bubble { overflow-wrap: anywhere; word-break: break-word; }
+.bubble p, .bubble li, .bubble blockquote, .bubble h1, .bubble h2, .bubble h3, .bubble h4 { overflow-wrap: anywhere; }
+.bubble img, .bubble video, .bubble svg { max-width: 100%; height: auto; }
+.bubble pre { max-width: 100%; overflow-x: auto; }
+.bubble pre code { white-space: pre; word-break: normal; overflow-wrap: normal; }
+.bubble .inline-code { overflow-wrap: anywhere; }
+.bubble ul, .bubble ol { padding-left: 1.3em; margin: 0.4em 0; }
+.bubble li.d1 { margin-left: 1.1em; }
+.bubble li.d2 { margin-left: 2.2em; }
+.bubble li.d3, .bubble li.d4 { margin-left: 3.3em; }
+.bubble blockquote { border-left: 3px solid var(--border-strong); margin: 0.5em 0; padding: 2px 0 2px 10px; color: var(--text-dim); }
+.bubble hr { border: 0; border-top: 1px solid var(--border); margin: 0.8em 0; }
+.bubble h1, .bubble h2, .bubble h3 { margin: 0.9em 0 0.4em; line-height: 1.25; text-transform: none; letter-spacing: 0; color: var(--text); }
+.bubble h1 { font-size: 1.15rem; }
+.bubble h2 { font-size: 1.02rem; }
+.bubble h3, .bubble h4, .bubble h5, .bubble h6 { font-size: 0.92rem; }
+
+.msg-stats-agent { align-items: center; flex-wrap: wrap; }
+.read-aloud {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font: inherit;
+  cursor: pointer;
+}
+.read-aloud:hover,
+.read-aloud.is-speaking { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.read-aloud svg { flex: none; }
+
+.md-task { color: var(--muted); }
+.md-task.is-done { color: var(--green); }
+
+/* Tablas: con scroll propio, nunca ensanchan el chat */
+.md-table-wrap { max-width: 100%; overflow-x: auto; margin: 0.6em 0; border: 1px solid var(--border); border-radius: 8px; }
+.md-table-wrap table { border-collapse: collapse; width: 100%; font-size: 0.78rem; }
+.md-table-wrap th, .md-table-wrap td { padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.md-table-wrap th { background: var(--surface-2); font-weight: 700; white-space: nowrap; }
+.md-table-wrap tr:last-child td { border-bottom: 0; }
+.md-table-wrap td { min-width: 80px; }
+
+/* Bloques <think> escritos como texto */
+.md-think { margin: 0.5em 0; border: 1px dashed var(--border-strong); border-radius: 8px; background: rgba(255, 255, 255, 0.025); }
+.md-think > summary { cursor: pointer; padding: 5px 10px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.md-think > div { padding: 2px 12px 10px; font-size: 0.76rem; color: var(--text-dim); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Llamadas a herramientas que el modelo escribió como texto: tarjeta ordenada */
+.pseudo-call {
+  margin: 0.6em 0;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--purple);
+  border-radius: 10px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.pc-head { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: rgba(177, 140, 255, 0.09); }
+.pc-head strong { font-family: var(--mono); font-size: 0.8rem; color: var(--purple); }
+.pc-head em { margin-left: auto; font-size: 0.6rem; font-style: normal; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.pc-icon { opacity: 0.8; }
+.pc-params { margin: 0; padding: 4px 12px 8px; display: grid; gap: 6px; }
+.pc-row { display: grid; grid-template-columns: minmax(70px, 110px) minmax(0, 1fr); gap: 10px; align-items: start; }
+.pc-row dt { margin: 0; padding-top: 1px; font-family: var(--mono); font-size: 0.68rem; color: var(--amber); overflow-wrap: anywhere; }
+.pc-row dd { margin: 0; min-width: 0; font-size: 0.78rem; line-height: 1.45; }
+.pc-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.pc-long { border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+.pc-long > summary { cursor: pointer; padding: 5px 9px; font-size: 0.74rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-long[open] > summary { white-space: normal; border-bottom: 1px solid var(--border); }
+.pc-long > pre { margin: 0; padding: 8px 10px; max-height: 280px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 0.72rem/1.5 var(--mono); color: var(--text-dim); }
+
+/* Respeta el ajuste de animaciones del usuario */
+.app[data-animations="off"] .msg,
+.app[data-animations="off"] .tool-card,
+.app[data-animations="off"] .chat-jump,
+.app[data-animations="off"] .composer-autocomplete,
+.app[data-animations="off"] .composer #send-btn {
+  animation: none !important;
+  transition: none !important;
+}
+.app[data-animations="off"] .tool-card::after { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .msg, .tool-card, .chat-jump, .composer-autocomplete, .msg-avatar-agent, .chat-live::before, .composer #send-btn, .code-block { animation: none !important; }
+  .tool-card::after { display: none; }
+}

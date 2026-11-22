@@ -1,0 +1,250 @@
+/* ====================================================== explicit tool cards ==== */
+
+.tool-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.tool-card[data-status="running"] { border-color: rgba(100, 166, 255, 0.45); }
+.tool-card[data-status="error"] { border-color: rgba(244, 121, 111, 0.5); }
+
+.tool-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
+}
+
+.tool-icon { font-size: 0.9rem; }
+.tool-name {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  flex: none;
+}
+
+.tool-target {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-time { font-size: 0.64rem; color: var(--muted); flex: none; }
+.tool-status { font-size: 0.72rem; flex: none; }
+.tool-toggle { flex: none; }
+
+.tool-body {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg);
+}
+
+.tool-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tool-section-title {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* The tool output is always rendered in full: nothing is truncated here, the
+   message scroll owns the height. */
+.tool-text {
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.tool-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tool-copy {
+  flex: none;
+  font-size: 0.62rem;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.tool-copy:hover { border-color: var(--accent); color: var(--accent); }
+
+.tool-text.tool-command { color: var(--green); }
+.tool-text.is-error { color: var(--red); border-color: rgba(244, 121, 111, 0.4); }
+
+.tool-diffs {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-deep);
+}
+
+.tool-diff-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.tool-diff-name {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.tool-diff-count { font-size: 0.62rem; color: var(--muted); flex: none; }
+
+.tool-params {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 0.66rem;
+}
+
+.tool-param-key { color: var(--muted); }
+.tool-param-value { font-family: var(--mono); color: var(--text-dim); }
+
+.tool-open { align-self: flex-start; }
+
+/* ============================================================ agents panel ==== */
+
+.agent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.agent-row {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  padding: 9px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.agent-row:hover { border-color: var(--border-strong); }
+.agent-row.is-active { border-color: var(--amber); background: var(--amber-soft); }
+.agent-row.is-error { border-color: rgba(244, 121, 111, 0.5); }
+.agent-row.is-wait { border-color: rgba(240, 180, 94, 0.5); }
+
+.agent-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.agent-state-icon { font-size: 0.95rem; flex: none; }
+
+.agent-row-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-state-text { font-size: 0.68rem; color: var(--text-dim); flex: none; }
+.agent-elapsed { font-size: 0.66rem; color: var(--muted); flex: none; }
+
+.agent-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.agent-chip {
+  font-size: 0.63rem;
+  font-family: var(--mono);
+  color: var(--text-dim);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.agent-chip.is-tool { border-color: rgba(100, 166, 255, 0.45); color: var(--accent); }
+.agent-chip.is-warn { border-color: rgba(240, 180, 94, 0.5); color: var(--amber); }
+
+.agent-row-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.agent-file {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 6px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-row-error {
+  font-size: 0.68rem;
+  color: var(--red);
+  background: var(--red-soft);
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+
+.agents-footer {
+  padding: 6px 12px 12px;
+  border-top: 1px solid var(--border);
+}

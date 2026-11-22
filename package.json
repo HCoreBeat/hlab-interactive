@@ -1,0 +1,95 @@
+{
+  "name": "hlab-interactive",
+  "version": "0.4.9",
+  "private": true,
+  "description": "HLab Interactive: espacio visual para coordinar agentes de OpenCode",
+  "main": "main.js",
+  "scripts": {
+    "build:highlight": "node scripts/build-highlight.js",
+    "build:i18n": "node scripts/build-i18n.js",
+    "start": "npm run build:highlight && npm run build:i18n && electron .",
+    "start:demo": "npm run build:highlight && npm run build:i18n && electron . --demo",
+    "smoke": "node scripts/smoke.js",
+    "build": "npm run build:i18n && electron-builder",
+    "dist": "npm run build:highlight && npm run build:i18n && electron-builder --win --x64",
+    "pack": "npm run build:i18n && electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "^44.9.2",
+    "electron-builder": "^24.13.3",
+    "esbuild": "^0.28.2",
+    "sharp": "^0.35.5"
+  },
+  "build": {
+    "appId": "com.opencode.office",
+    "productName": "HLab Interactive",
+    "copyright": "Copyright © 2026 hlabinteractive",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "electron/**/*",
+      "src/**/*",
+      "package.json",
+      "node_modules/electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "docs",
+        "to": "docs",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "requestedExecutionLevel": "asInvoker",
+      "publisherName": "hlabinteractive"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "HLab Interactive",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "license": "LICENSE.txt",
+      "include": "build/installer.nsh"
+    },
+    "portable": {
+      "artifactName": "HLab-Interactive-${version}-portable.${ext}"
+    },
+    "fileAssociations": [
+      {
+        "ext": "hl",
+        "name": "Proyecto de HLab Interactive",
+        "description": "Proyecto de HLab Interactive",
+        "role": "Editor",
+        "icon": "build/icon.ico"
+      }
+    ]
+  },
+  "dependencies": {
+    "highlight.js": "^11.12.0"
+  }
+}

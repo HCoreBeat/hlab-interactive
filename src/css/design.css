@@ -1,0 +1,173 @@
+/* ============================================================ sistema de dise\u00f1o (paleta + componentes) ====
+   Se carga el \u00faltimo: unifica colores, superficies, bordes y el panel de sesiones en ambos temas. */
+
+/* ---------- Oscuro: grafito azulado con acento periwinkle ---------- */
+html:not([data-theme="light"]),
+html:not([data-theme="light"]) .app:not([data-theme="light"]) {
+  --bg-deep: #090b11;
+  --bg: #0e1117;
+  --surface: #141922;
+  --surface-2: #1b2130;
+  --surface-3: #252d40;
+  --border: #252d3d;
+  --border-strong: #36415a;
+  --text: #e9edf5;
+  --text-dim: #aab4c9;
+  --muted: #7d889f;
+  --accent: #7c9cff;
+  --accent-soft: rgba(124, 156, 255, 0.15);
+  --amber: #f5b861;
+  --amber-soft: rgba(245, 184, 97, 0.15);
+  --green: #4fd1a1;
+  --green-soft: rgba(79, 209, 161, 0.14);
+  --red: #ff7a85;
+  --red-soft: rgba(255, 122, 133, 0.14);
+  --purple: #b69cff;
+  --shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+/* ---------- Claro: papel fr\u00edo con acento \u00edndigo ---------- */
+html[data-theme="light"],
+html[data-theme="light"] .app,
+.app[data-theme="light"] {
+  --bg-deep: #e5e8ef;
+  --bg: #f3f5f9;
+  --surface: #ffffff;
+  --surface-2: #eef1f7;
+  --surface-3: #dfe4ee;
+  --border: #d2d8e5;
+  --border-strong: #aab5ca;
+  --text: #101828;
+  --text-dim: #394560;
+  --muted: #586379;
+  --accent: #3550e6;
+  --accent-soft: rgba(53, 80, 230, 0.11);
+  --amber: #9a5d0a;
+  --amber-soft: rgba(154, 93, 10, 0.12);
+  --green: #0b7856;
+  --green-soft: rgba(11, 120, 86, 0.11);
+  --red: #be2f3c;
+  --red-soft: rgba(190, 47, 60, 0.1);
+  --purple: #5e42d0;
+  --shadow: 0 14px 36px rgba(16, 24, 40, 0.18);
+  color-scheme: light;
+}
+
+::selection { background: var(--accent-soft); color: var(--text); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* barras de scroll discretas */
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 9px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--muted); background-clip: content-box; }
+
+/* ---------- estructura: riel, paneles y cabeceras ---------- */
+.rail { background: var(--bg-deep); border-right: 1px solid var(--border); }
+.side-panel { background: var(--surface); border-right: 1px solid var(--border); }
+.side-panel-head {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border-bottom: 1px solid var(--border);
+}
+.side-panel-title { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
+.chat, .editor { background: var(--bg); }
+
+/* ---------- sesiones ---------- */
+.sidebar-head { padding: 12px 12px 8px; }
+.sidebar-project { font-weight: 700; letter-spacing: 0.01em; }
+.session-list { display: grid; gap: 6px; padding: 8px 10px 14px; margin: 0; list-style: none; }
+
+.session-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 10px 16px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 100ms ease, box-shadow 120ms ease;
+}
+.session-item::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--border-strong);
+}
+.session-item:hover { border-color: var(--border-strong); background: var(--surface-3); }
+.session-item:active { transform: scale(0.992); }
+.session-item.is-active { background: var(--accent-soft); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-soft); }
+.session-item.is-active::before { background: var(--accent); }
+.session-item.is-busy::before { background: var(--amber); animation: live-dot 1.1s ease-in-out infinite; }
+.session-item.is-permission::before { background: var(--purple); animation: live-dot 1.1s ease-in-out infinite; }
+.session-item.is-error::before { background: var(--red); }
+.session-item.is-done::before { background: var(--green); }
+
+/* subagentes: sangr\u00eda con conector, m\u00e1s compactos y sin relleno */
+.session-item.is-child {
+  margin-left: 22px;
+  padding: 8px 10px 8px 14px;
+  background: transparent;
+  border-style: dashed;
+}
+.session-item.is-child::after {
+  content: "";
+  position: absolute;
+  left: -15px;
+  top: 50%;
+  width: 13px;
+  border-top: 1px dashed var(--border-strong);
+}
+.session-item.is-child.is-busy { background: var(--amber-soft); border-style: solid; border-color: var(--amber); }
+
+.session-copy { min-width: 0; flex: 1; display: grid; gap: 3px; }
+.session-title { font-size: 0.8rem; font-weight: 650; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.session-meta { font-size: 0.66rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.session-role {
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--surface-3);
+  color: var(--text-dim);
+}
+.session-role.is-subagent { background: var(--amber-soft); color: var(--amber); }
+.session-role.is-primary { background: var(--accent-soft); color: var(--accent); }
+.session-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border-strong); flex: none; }
+.session-item.is-busy .session-dot { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+.session-item.is-done .session-dot { background: var(--green); }
+.session-item.is-error .session-dot { background: var(--red); }
+.session-item.is-permission .session-dot { background: var(--purple); box-shadow: 0 0 10px var(--purple); }
+.session-delete, .session-toggle { opacity: 0; transition: opacity 120ms ease; }
+.session-item:hover .session-delete, .session-item:hover .session-toggle, .session-item.is-active .session-toggle { opacity: 1; }
+.session-clean-row { list-style: none; margin-left: 22px; }
+.session-clean {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+.session-clean:hover { border-color: var(--red); color: var(--red); }
+
+/* ---------- elementos comunes ---------- */
+.btn-primary { background: var(--accent); color: #fff; border-color: transparent; }
+html:not([data-theme="light"]) .btn-primary { color: #0b1020; }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-small { background: var(--surface-2); border: 1px solid var(--border-strong); color: var(--text); }
+.btn-small:hover { border-color: var(--accent); color: var(--accent); }
+.bubble { background: var(--surface); border-color: var(--border-strong); }
+.msg-user .bubble { background: linear-gradient(135deg, var(--accent-soft), transparent 70%), var(--surface-2); border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
+.tool-card, .permission-card, .modal { background: var(--surface); border-color: var(--border-strong); }
+.topbar { background: linear-gradient(180deg, var(--surface), var(--bg-deep)); border-bottom: 1px solid var(--border); }
