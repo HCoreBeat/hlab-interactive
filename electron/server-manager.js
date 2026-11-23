@@ -193,8 +193,10 @@ class ServerManager extends EventEmitter {
   async waitForReady(url, password, timeoutMs) {
     const token = Buffer.from(`opencode:${password}`, 'utf8').toString('base64');
     const deadline = Date.now() + timeoutMs;
+    let attempts = 0;
     while (Date.now() < deadline) {
       if (this.stopping) return false;
+      attempts += 1;
       try {
         const response = await fetch(`${url}/api/info`, {
           headers: { Authorization: `Basic ${token}` },
@@ -213,7 +215,10 @@ class ServerManager extends EventEmitter {
       } catch {
         // Server not up yet.
       }
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      // Los primeros sondeos son rapidos; despues se espacia para no gastar
+      // ~50 peticiones locales por arranque.
+      const delay = attempts < 12 ? 250 : 1000;
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
     return false;
   }

@@ -11,10 +11,17 @@ import { toast } from './toast.js';
 import { uiIcon } from '../util/ui-icons.js';
 
 const MAX_ATTACHMENTS = 8;
-const MAX_DIMENSION = 2048;
-const MAX_BYTES = 4 * 1024 * 1024;
-const MAX_TEXT_FILE_BYTES = 512 * 1024;
-const MAX_TEXT_TOTAL_BYTES = 2 * 1024 * 1024;
+// Las imágenes se reenvían al proveedor en CADA turno posterior, así que pesan
+// varias veces. Se reducen a un tamaño razonable para visión (1280 px) y se
+// comprimen hasta un objetivo de ~600 KB antes de entrar al contexto.
+const MAX_DIMENSION = 1280;
+const TARGET_BYTES = 600 * 1024;
+const MAX_BYTES = 1024 * 1024;
+// Presupuesto binario total por mensaje: en base64 crece un 33 % y debe caber
+// en el límite de cuerpo del IPC (12 MB) sin fallar al enviar.
+const MAX_TOTAL_BYTES = 3 * 1024 * 1024;
+const MAX_TEXT_FILE_BYTES = 256 * 1024;
+const MAX_TEXT_TOTAL_BYTES = 1024 * 1024;
 const ACCEPT = [
   'image/png,image/jpeg,image/webp,image/gif',
   '.txt,.md,.markdown,.mdx,.js,.mjs,.cjs,.jsx,.ts,.tsx,.html,.htm,.css,.scss,.less',
@@ -146,41 +153,70 @@ function bytesToBase64(bytes) {
   return btoa(binary);
 }
 
+/**
+ * Reduce la imagen hasta el objetivo de peso. Cada adjunto se reenvía en todos
+ * los turnos siguientes, así que comprimir aquí ahorra datos muchas veces.
+ * Se prueba primero JPEG/WebP (mucho más pequeño que PNG) y, si aún pesa, se
+ * reduce la resolución por pasos en vez de degradar la calidad hasta el ruido.
+ */
 async function fileToImage(file) {
   const mime = /^image\/(png|jpe?g|webp|gif)$/i.test(file.type)
     ? file.type
     : IMAGE_MIME_BY_EXTENSION[extensionOf(file)];
   if (!/^image\/(png|jpe?g|webp|gif)$/i.test(mime)) throw new Error(`${file.name || 'Archivo'}: formato de imagen no admitido`);
-  let dataUrl = await readAsDataURL(file);
+  const dataUrl = await readAsDataURL(file);
   const image = await loadImage(dataUrl);
-  let width = image.naturalWidth;
-  let height = image.naturalHeight;
-  let outputMime = mime;
-  let bytes = file.size;
-
-  const scale = Math.min(1, MAX_DIMENSION / Math.max(width, height));
-  if (scale < 1 || bytes > MAX_BYTES) {
-    const factor = scale < 1 ? scale : 0.85;
-    width = Math.max(1, Math.round(width * factor));
-    height = Math.max(1, Math.round(height * factor));
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const g = canvas.getContext('2d');
-    g.imageSmoothingQuality = 'high';
-    g.drawImage(image, 0, 0, width, height);
-    outputMime = mime === 'image/png' && bytes < MAX_BYTES * 2 ? 'image/png' : 'image/jpeg';
-    dataUrl = canvas.toDataURL(outputMime, 0.9);
-    bytes = Math.round((dataUrl.length * 3) / 4);
-    if (bytes > MAX_BYTES * 1.2 && outputMime === 'image/jpeg') {
-      dataUrl = canvas.toDataURL('image/jpeg', 0.72);
-      bytes = Math.round((dataUrl.length * 3) / 4);
-    }
-  }
+  const naturalWidth = image.naturalWidth;
+  const naturalHeight = image.naturalHeight;
   counter += 1;
-  const ext = outputMime.split('/')[1].replace('jpeg', 'jpg');
-  const name = file.name && file.name !== 'image.png' ? file.name : `captura-${Date.now().toString(36)}-${counter}.${ext}`;
-  return { id: `img${Date.now().toString(36)}${counter}`, kind: 'image', name, mime: outputMime, dataUrl, width, height, bytes };
+
+  // Una imagen ya pequeña y del tamaño adecuado se envía tal cual: recomprimirla
+  // solo gastaría CPU y podría empeorar la legibilidad del texto.
+  if (Math.max(naturalWidth, naturalHeight) <= MAX_DIMENSION && file.size <= TARGET_BYTES) {
+    const ext = mime.split('/')[1].replace('jpeg', 'jpg');
+    return { id: nextImageId(), kind: 'image', name: imageName(file, ext), mime, dataUrl, width: naturalWidth, height: naturalHeight, bytes: file.size };
+  }
+
+  const scale = Math.min(1, MAX_DIMENSION / Math.max(naturalWidth, naturalHeight));
+  let width = Math.max(1, Math.round(naturalWidth * scale));
+  let height = Math.max(1, Math.round(naturalHeight * scale));
+  // JPEG comprime mucho mejor que PNG las capturas de pantalla, que son el caso
+  // habitual aquí. Se baja calidad primero y resolución después.
+  let quality = 0.85;
+  let current = encodeImage(image, width, height, 'image/jpeg', quality);
+  for (let attempt = 0; attempt < 8 && current.bytes > TARGET_BYTES; attempt += 1) {
+    if (quality > 0.6) {
+      quality = Math.max(0.6, quality - 0.08);
+    } else {
+      width = Math.max(320, Math.round(width * 0.8));
+      height = Math.max(320, Math.round(height * 0.8));
+    }
+    current = encodeImage(image, width, height, 'image/jpeg', quality);
+  }
+  if (current.bytes > MAX_BYTES) {
+    throw new Error(`${file.name || 'Imagen'}: no se pudo reducir por debajo de ${humanSize(MAX_BYTES)}`);
+  }
+  return { id: nextImageId(), kind: 'image', name: imageName(file, 'jpg'), mime: current.mime, dataUrl: current.dataUrl, width, height, bytes: current.bytes };
+}
+
+function encodeImage(image, width, height, mime, quality) {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const g = canvas.getContext('2d');
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(image, 0, 0, width, height);
+  const dataUrl = canvas.toDataURL(mime, quality);
+  return { dataUrl, mime, bytes: Math.max(0, Math.round((dataUrl.length - dataUrl.indexOf(',') - 1) * 3 / 4)) };
+}
+
+function nextImageId() {
+  return `img${Date.now().toString(36)}${counter}`;
+}
+
+function imageName(file, ext) {
+  const base = file.name && file.name !== 'image.png' ? file.name.replace(/\.[^.]+$/, '') : `captura-${Date.now().toString(36)}-${counter}`;
+  return `${base}.${ext}`;
 }
 
 async function fileToText(file) {
@@ -361,7 +397,9 @@ export function mountAttachments({ chat, composer, input, actions, onChange }) {
     if (pending.length === 0) { onChange?.(0); return; }
     const list = el('div', { class: 'att-list' });
     pending.forEach((file, position) => {
-      const meta = file.kind === 'image' ? `${file.width}\u00d7${file.height}` : humanSize(file.bytes);
+      const meta = file.kind === 'image'
+        ? `${file.width}\u00d7${file.height} \u00b7 ${humanSize(file.bytes)}`
+        : humanSize(file.bytes);
       list.appendChild(el('div', {
         class: `att-item ${file.kind === 'text' ? 'att-text-item' : ''}`,
         title: `${file.name} \u00b7 ${meta}`,
@@ -377,10 +415,17 @@ export function mountAttachments({ chat, composer, input, actions, onChange }) {
       ]));
     });
     const warning = modelWarning();
+    const totalBytes = pending.reduce((total, file) => total + (file.bytes || 0), 0);
+    // base64 añade ~33 %: es lo que de verdad se sube con el mensaje.
+    const uploadBytes = Math.round(totalBytes * 4 / 3);
     tray.append(
       list,
       el('div', { class: 'att-foot' }, [
-        el('span', { class: 'att-count', text: `${pending.length} archivo${pending.length === 1 ? '' : 's'} adjunto${pending.length === 1 ? '' : 's'} \u00b7 clic en imágenes para ampliar` }),
+        el('span', {
+          class: 'att-count',
+          text: `${pending.length} archivo${pending.length === 1 ? '' : 's'} · ${humanSize(uploadBytes)} a subir · clic en imágenes para ampliar`,
+          title: 'Peso del mensaje con los adjuntos (base64). Los adjuntos se reenvían en cada turno posterior: compactar el contexto también los reduce.',
+        }),
         warning ? el('span', { class: 'att-warn', text: `\u26a0 ${warning}` }) : null,
         el('button', { class: 'att-clear', type: 'button', text: 'Quitar todas', onClick: () => clearAll() }),
       ].filter(Boolean)),
@@ -407,19 +452,27 @@ export function mountAttachments({ chat, composer, input, actions, onChange }) {
     if (pending.length + accepted.length > MAX_ATTACHMENTS) toast(`M\u00e1ximo ${MAX_ATTACHMENTS} archivos por mensaje.`, 'warn');
     const available = Math.max(0, MAX_ATTACHMENTS - pending.length);
     let textBytes = pending.filter((file) => file.kind === 'text').reduce((total, file) => total + file.bytes, 0);
+    let totalBytes = pending.reduce((total, file) => total + file.bytes, 0);
     busy = true;
     tray.classList.add('is-loading');
     for (const file of accepted.slice(0, available)) {
       try {
+        let attachment;
         if (isImageFile(file)) {
-          pending.push(await fileToImage(file));
+          attachment = await fileToImage(file);
         } else {
           if (file.size > MAX_TEXT_FILE_BYTES) throw new Error(`${file.name}: máximo ${humanSize(MAX_TEXT_FILE_BYTES)} por archivo`);
-          if (textBytes + file.size > MAX_TEXT_TOTAL_BYTES) throw new Error('Los archivos de texto superan el límite conjunto de 2 MB');
-          const attachment = await fileToText(file);
-          pending.push(attachment);
-          textBytes += attachment.bytes;
+          if (textBytes + file.size > MAX_TEXT_TOTAL_BYTES) throw new Error(`Los archivos de texto superan el límite conjunto de ${humanSize(MAX_TEXT_TOTAL_BYTES)}`);
+          attachment = await fileToText(file);
         }
+        // El mensaje viaja como base64 (+33 %): sin este tope, varios adjuntos
+        // grandes hacen fallar el envío entero.
+        if (totalBytes + attachment.bytes > MAX_TOTAL_BYTES) {
+          throw new Error(`Los adjuntos superan el límite conjunto de ${humanSize(MAX_TOTAL_BYTES)} por mensaje`);
+        }
+        if (attachment.kind === 'text') textBytes += attachment.bytes;
+        totalBytes += attachment.bytes;
+        pending.push(attachment);
         render();
       } catch (error) {
         toast(error.message || 'No se pudo cargar el archivo', 'error');

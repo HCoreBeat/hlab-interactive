@@ -71,14 +71,34 @@ export async function createSession({ title, agent, model, permissions } = {}) {
 }
 
 // Formato de adjuntos que acepta el servidor; se aprende al primer envío correcto.
+// El primero es el que documenta la API v2 (Prompt.FileAttachment): base64 sin
+// prefijo `data:` y origen `inline`.
+function base64Payload(dataUrl) {
+  const comma = String(dataUrl || '').indexOf(',');
+  return comma >= 0 ? String(dataUrl).slice(comma + 1) : String(dataUrl || '');
+}
 const FILE_SHAPES = [
+  (file) => ({ data: base64Payload(file.dataUrl), mime: file.mime, source: { type: 'inline' }, name: file.name }),
   // el esquema de OpenCode (PromptInput.FileAttachment) solo admite uri, name y description
   (file) => ({ uri: file.dataUrl, name: file.name }),
   (file) => ({ uri: file.dataUrl, mime: file.mime, name: file.name }),
   (file) => ({ url: file.dataUrl, mime: file.mime, filename: file.name }),
   (file) => ({ type: 'file', uri: file.dataUrl, mime: file.mime, name: file.name }),
 ];
-let fileShape = 0;
+// El sufijo de versión invalida un formato aprendido con la lista anterior.
+const FILE_SHAPE_KEY = 'oc.fileShape.v2';
+function readFileShape() {
+  try {
+    const value = Number(localStorage.getItem(FILE_SHAPE_KEY));
+    return Number.isInteger(value) && value >= 0 && value < FILE_SHAPES.length ? value : -1;
+  } catch {
+    return -1;
+  }
+}
+function writeFileShape(index) {
+  try { localStorage.setItem(FILE_SHAPE_KEY, String(index)); } catch { /* sin almacenamiento */ }
+}
+let fileShape = readFileShape();
 
 /**
  * Envía un mensaje. Con archivos (`files`: {dataUrl, mime, name}) prueba los formatos de
@@ -88,25 +108,48 @@ export async function sendPrompt(sessionID, text, files = []) {
   if (!files || files.length === 0) {
     return api('POST', sessionPath(sessionID, '/prompt'), { body: { text } });
   }
-  const order = FILE_SHAPES.map((_, index) => index).sort((a, b) => (a === fileShape ? -1 : b === fileShape ? 1 : a - b));
-  let firstFailure = null;
-  for (const index of order) {
-    const body = { text, files: files.map(FILE_SHAPES[index]) };
-    const result = await api('POST', sessionPath(sessionID, '/prompt'), { body });
+  const FORMAT_ERROR = /invalid|schema|parse|expected|unknown|required|unrecognized|400|422|validation/i;
+  const attempt = (index) => api('POST', sessionPath(sessionID, '/prompt'), {
+    body: { text, files: files.map(FILE_SHAPES[index]) },
+  });
+
+  const first = fileShape >= 0 ? fileShape : 0;
+  let result = await attempt(first);
+  if (result.ok) {
+    fileShape = first;
+    writeFileShape(first);
+    return result;
+  }
+
+  // Un fallo de red, de modelo o de tamaño no se arregla cambiando el formato:
+  // reenviar el cuerpo (con sus data URL) solo gastaría ancho de banda.
+  if (!FORMAT_ERROR.test(String(result.error || ''))) return result;
+
+  // El formato guardado dejó de valer: se olvida y se prueban los demás una vez.
+  if (fileShape >= 0) { fileShape = -1; writeFileShape(-1); }
+  for (let index = 0; index < FILE_SHAPES.length; index += 1) {
+    if (index === first) continue;
+    result = await attempt(index);
     if (result.ok) {
       fileShape = index;
+      writeFileShape(index);
       return result;
     }
-    firstFailure = firstFailure || result;
-    const reason = String(result.error || '');
-    // solo se reintenta si parece un problema de formato, no de red o de modelo
-    if (!/invalid|schema|parse|expected|unknown|required|unrecognized|400|422|validation/i.test(reason)) break;
   }
-  return firstFailure;
+  return result;
 }
 
 export async function interruptSession(sessionID) {
   return api('POST', sessionPath(sessionID, '/interrupt'));
+}
+
+/**
+ * Pide un resumen del historial. El servidor lo aplica en el siguiente punto
+ * seguro, así que la respuesta solo confirma la petición. Menos contexto =
+ * menos datos subidos en cada mensaje posterior.
+ */
+export async function compactSession(sessionID) {
+  return api('POST', sessionPath(sessionID, '/compact'), { body: {} });
 }
 
 /**

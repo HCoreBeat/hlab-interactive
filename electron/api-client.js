@@ -9,6 +9,7 @@
  */
 
 const DEFAULT_TIMEOUT = 30000;
+const MAX_RESPONSE_BYTES = 12 * 1024 * 1024;
 
 function appendParam(params, key, value) {
   if (value === undefined || value === null) return;
@@ -60,7 +61,11 @@ class ApiClient {
 
     const { query, body, timeout, responseType } = options;
     const url = `${this.baseUrl}${path}${buildQuery(query)}`;
-    const headers = { Accept: 'application/json', ...this.authHeader() };
+    const headers = {
+      Accept: 'application/json',
+      'Accept-Encoding': 'gzip, deflate, br',
+      ...this.authHeader(),
+    };
     const init = { method: method || 'GET', headers };
 
     if (body !== undefined) {
@@ -81,7 +86,24 @@ class ApiClient {
 
     let data = null;
     if (responseType === 'base64' && response.ok) {
+      const length = Number(response.headers.get('content-length') || 0);
+      if (length > MAX_RESPONSE_BYTES) {
+        return {
+          ok: false,
+          status: 413,
+          data: null,
+          error: 'El archivo es demasiado grande para mostrarlo en la app.',
+        };
+      }
       const bytes = Buffer.from(await response.arrayBuffer());
+      if (bytes.length > MAX_RESPONSE_BYTES) {
+        return {
+          ok: false,
+          status: 413,
+          data: null,
+          error: 'El archivo es demasiado grande para mostrarlo en la app.',
+        };
+      }
       data = {
         base64: bytes.toString('base64'),
         contentType: response.headers.get('content-type') || 'application/octet-stream',

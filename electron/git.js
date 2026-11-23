@@ -19,19 +19,22 @@ function validFile(file) {
   return value;
 }
 
-function run(directory, args, maxBuffer = 8 * 1024 * 1024) {
+function run(directory, args, maxBuffer = 8 * 1024 * 1024, timeout = 0) {
   return new Promise((resolve) => {
     execFile('git', args, {
       cwd: directory,
       windowsHide: true,
       maxBuffer,
+      ...(timeout > 0 ? { timeout, killSignal: 'SIGKILL' } : {}),
       env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_OPTIONAL_LOCKS: '0' },
     }, (error, stdout, stderr) => {
       resolve({
         ok: !error,
         stdout: String(stdout || ''),
         stderr: String(stderr || ''),
-        error: error ? error.message : '',
+        error: error
+          ? (error.killed ? 'La operación Git tardó demasiado y se canceló.' : error.message)
+          : '',
       });
     });
   });
@@ -77,10 +80,10 @@ async function diff(directory, file, staged = false) {
   return result.ok ? { ok: true, text: '' } : { ok: false, error: result.stderr || result.error };
 }
 
-async function simple(directory, args) {
+async function simple(directory, args, timeout = 0) {
   const repo = validRepo(directory);
   if (!repo) return { ok: false, error: 'La carpeta no es un repositorio Git.' };
-  const result = await run(repo, args);
+  const result = await run(repo, args, 8 * 1024 * 1024, timeout);
   return result.ok
     ? { ok: true, text: result.stdout, stderr: result.stderr }
     : { ok: false, error: result.stderr || result.error };
@@ -101,8 +104,9 @@ const commit = (dir, message) => {
   }
   return simple(dir, ['commit', '-m', value]);
 };
-const push = (dir) => simple(dir, ['push']);
-const pull = (dir) => simple(dir, ['pull', '--ff-only']);
+// push/pull salen a la red: sin timeout un cuelgue de red dejaba la promesa viva.
+const push = (dir) => simple(dir, ['push'], 180000);
+const pull = (dir) => simple(dir, ['pull', '--ff-only'], 180000);
 const branch = (dir) => simple(dir, ['rev-parse', '--abbrev-ref', 'HEAD']);
 const log = (dir) => simple(dir, ['log', '--oneline', '-20']);
 

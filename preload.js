@@ -84,8 +84,8 @@ const oc = {
     },
   },
   setup: {
-    check() {
-      return ipcRenderer.invoke('oc:setup:check');
+    check(force = false) {
+      return ipcRenderer.invoke('oc:setup:check', force);
     },
     install(id) {
       return ipcRenderer.invoke('oc:setup:install', id);

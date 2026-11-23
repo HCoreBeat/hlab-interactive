@@ -229,6 +229,39 @@ Antes de subir cambios, comprueba que `.gitignore` excluye `node_modules/`, `dis
 - **Seguridad**: `contextIsolation`, `sandbox`, sin `nodeIntegration`, CSP estricta, sin
   navegación ni ventanas nuevas, y todo el HTML generado se escapa antes de tocar el DOM.
 
+### Tráfico y tamaño
+
+Casi todo el tráfico de la app es **local** (`127.0.0.1`): hablar con `opencode serve` no
+consume datos de Internet. Lo que sí pesa son las **subidas de release** (instalador +
+portable ≈ 220 MB por versión). Para reducirlo:
+
+- El build usa `compression: "maximum"` y `electronLanguages: ["en-US", "es"]`, así que el
+  paquete no arrastra las 55 traducciones de Chromium (~47 MB sin comprimir).
+- Publica **solo el instalador** (`HLab Interactive Setup x.y.z.exe`); el portable es
+  opcional. Cada artefacto que subes se descarga entero y se cuenta dos veces (subida y
+  bajada) en la cuota.
+- `dist/` guarda los instaladores de todas las versiones (varios GB): bórralos cuando ya
+  estén publicados; no se versionan (`.gitignore`).
+
+Dentro de la app:
+
+- La comprobación de versión de opencode se **cachea 24 h** (`lastUpdateCheck`), de modo que
+  arrancar no consulta npm cada vez. «Buscar actualizaciones» desde la paleta fuerza la
+  consulta.
+- Cada turno reenvía **todo el contexto** al proveedor, así que lo que de verdad gasta
+  datos es el tamaño de la conversación. El chip del compositor muestra `≈ KB/msg`
+  (tokens × 4 B) y un botón **Compactar**. El umbral de compactación automática se ajusta
+  en Ajustes → «Datos y contexto» (por defecto 60 000 tokens, cooldown de 90 s) y también
+  está en la paleta como `oc-compact`.
+- Los adjuntos se reducen a 1280 px y ~600 KB por imagen (tope duro 1 MB, 3 MB de subida
+  por mensaje); el texto va a 256 KB por archivo y 1 MB en conjunto. La bandeja enseña
+  cuánto se va a subir en base64. El formato de envío aprendido se guarda: no se reenvía
+  el mismo cuerpo hasta 4 veces.
+- El registro del inspector se recorta por número **y por peso** (2 MB), y la
+  reconciliación de la sesión activa pasó de 3 s a 8 s.
+- Las respuestas de `/api/fs/read` se rechazan por encima de 12 MB en vez de decodificarlas
+  enteras en base64.
+
 ## Estructura
 
 ```

@@ -10,6 +10,13 @@ const DEFAULTS = {
   fontSize: 14,
   speechRate: 1.02,
   speechVoice: '',
+  // Compactación automática del contexto: es lo que evita que una sesión larga
+  // acabe subiendo varios MB en cada mensaje. El umbral se mide en tokens de
+  // contexto (entrada + caché leída) y se puede ajustar desde Ajustes.
+  autoCompact: true,
+  autoCompactTokens: 60000,
+  lastUpdateCheck: 0,
+  latestKnownVersion: '',
   recentProjects: [],
   lastProject: null,
   connection: { mode: 'spawn', url: '', password: '' },

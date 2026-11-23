@@ -65,7 +65,7 @@ function commandFor(id, opencodePath) {
   }
 }
 
-async function check(opencodePath) {
+async function check(opencodePath, cachedLatest = '') {
   const opencodeCommand = opencodePath && opencodePath.trim() ? quoted(opencodePath.trim()) : 'opencode';
   const [node, npm, git, opencode] = await Promise.all([
     run('node --version'),
@@ -73,10 +73,14 @@ async function check(opencodePath) {
     run('git --version'),
     run(`${opencodeCommand} --version`),
   ]);
-  const latestRaw = npm !== null ? await run('npm view opencode-ai version', 20000) : null;
+  // `npm view` consulta el registro público: solo se hace cuando no tenemos una
+  // versión reciente cacheada (o cuando el usuario fuerza la comprobación).
+  const latestRaw = !cachedLatest && npm !== null
+    ? await run('npm view opencode-ai version', 20000)
+    : null;
 
   const installedVersion = cleanVersion(opencode);
-  const latest = cleanVersion(latestRaw);
+  const latest = cachedLatest || cleanVersion(latestRaw);
   const items = [
     {
       id: 'node', label: 'Node.js', required: true, found: node !== null, version: cleanVersion(node),

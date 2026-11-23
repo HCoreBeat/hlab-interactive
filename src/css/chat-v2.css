@@ -38,7 +38,7 @@
 .composer #send-btn[disabled] { opacity: 0.5; transform: none; box-shadow: none; }
 .composer .composer-hint {
   grid-column: 1 / -1;
-  grid-row: 2;
+  grid-row: 3;
   font-size: 0.66rem;
   line-height: 1.2;
 }

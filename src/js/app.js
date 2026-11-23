@@ -27,6 +27,7 @@ import { showTab, applyPanelState, initPanelRouter, activePanelInstance, PANEL_K
 import { mountSplitters } from './ui/splitters.js';
 import { openSetupDialog, checkEnvironmentOnStart } from './ui/setup-dialog.js';
 import { mountQuota, openUsage, detectLimit } from './ui/quota.js';
+import { mountContextMeter, requestCompaction, maybeAutoCompact } from './ui/context-meter.js';
 import { openOpenCodeConfig, showCliOutput, openCliTerminal } from './ui/opencode-config.js';
 
 let chat = null;
@@ -112,6 +113,7 @@ const handlers = {
   onFoldersChanged: (sessionID, folders) => handleFoldersChanged(sessionID, folders),
   onExploreFolder: (folder) => exploreFolder(folder),
   onRunCommand: (name) => controller.submitPrompt(`/${name}`),
+  onCompact: () => requestCompaction('manual'),
   onUseAgent: (agentID) => applyAgent(agentID),
   onOpenPalette: () => commandPalette?.open(),
   onToggleThinking: () => toggleThinking(),
@@ -755,6 +757,7 @@ function wireWindowControls() {
 function wireIpc() {
   eventDeps = {
     onSessionsChanged: scheduleSessionsRefresh,
+    onSessionSettled: () => { setTimeout(() => { maybeAutoCompact(); }, 1200); },
     onSubagentSpawn: (sessionID) => watchSubagents(sessionID),
     onProjectUpdated: () => {},
     onMcpChanged: refreshMcpStatus,
@@ -858,6 +861,7 @@ async function boot() {
     office = mountOfficePixelArt(handlers);
     window.__office = office;
     chat = mountChat(handlers);
+    mountContextMeter();
     mountPermissions();
     mountQuestions();
     mountActivityBar({
@@ -879,8 +883,14 @@ async function boot() {
     wireIpc();
     wireWindowControls();
     if (!subagentTimer) subagentTimer = setInterval(sweepSubagents, SUBAGENT_SWEEP_MS);
-    setInterval(() => { void reconcileActiveSession(); }, 3000);
-    window.addEventListener('focus', () => { void reconcileActiveSession(true); });
+    // Antes se descargaban 200 mensajes cada 3 s mientras el agente trabajaba:
+    // Espaciamos y desbloqueamos el repintado por foco con un pequeño debounce.
+    setInterval(() => { void reconcileActiveSession(); }, 8000);
+    let focusTimer = null;
+    window.addEventListener('focus', () => {
+      clearTimeout(focusTimer);
+      focusTimer = setTimeout(() => { void reconcileActiveSession(true); }, 400);
+    });
 
     const status = await window.oc.server.status();
     // `uiCheck` viaja en app:info (no en server:status): sin esto el modo

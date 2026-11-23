@@ -181,6 +181,15 @@ class DemoSource {
         this.interrupt(sessionID);
         return this.ok({ interrupted: true });
       }
+      if (rest === '/compact' && method === 'POST') {
+        const session = this.sessions.get(sessionID);
+        if (session) {
+          // Simula el resumen: conserva poco contexto para que el medidor baje.
+          session.tokens = { input: 900, output: 120, reasoning: 0, cache: { read: 0, write: 0 } };
+          this.event('session.usage.updated', { sessionID, cost: session.cost || 0, tokens: session.tokens });
+        }
+        return this.ok({ data: { sessionID, status: 'compacting' } });
+      }
       if (rest === '/shell' && method === 'POST') {
         this.runShell(sessionID, body?.command || 'echo demo');
         return this.ok(null, 204);

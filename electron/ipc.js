@@ -8,11 +8,15 @@ const terminal = require('./terminal');
 const git = require('./git');
 
 const METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
-const MAX_BODY = 5 * 1024 * 1024;
+// Los adjuntos viajan como data URL base64 (×1,33): un mensaje con varias
+// imágenes legítimas superaba el límite anterior de 5 MB y fallaba en seco.
+const MAX_BODY = 12 * 1024 * 1024;
 const MAX_SETTING = 1024 * 1024;
 
 const ALLOWED_SETTINGS = new Set([
   'theme', 'locale', 'fontSize', 'speechRate', 'speechVoice',
+  'autoCompact', 'autoCompactTokens',
+  'lastUpdateCheck', 'latestKnownVersion',
   'animations', 'demo', 'archiveSubagents',
   'opencodePath', 'lastProject', 'connection', 'permissions', 'recentProjects',
   'preferredModel', 'preferredAgent', 'projectFolders', 'projectNotes',
@@ -58,10 +62,20 @@ function sanitizeSettings(partial) {
       case 'speechVoice':
         if (value !== null && (typeof value !== 'string' || value.length > 300)) throw new Error('Voz no válida.');
         break;
+      case 'lastUpdateCheck':
+        if (!Number.isFinite(value) || value < 0) throw new Error('Fecha de comprobación no válida.');
+        break;
+      case 'latestKnownVersion':
+        if (value !== null && (typeof value !== 'string' || value.length > 60)) throw new Error('Versión no válida.');
+        break;
       case 'animations':
       case 'demo':
       case 'archiveSubagents':
+      case 'autoCompact':
         if (typeof value !== 'boolean') throw new Error(`Valor no válido para ${key}.`);
+        break;
+      case 'autoCompactTokens':
+        if (!Number.isFinite(value) || value < 5000 || value > 2000000) throw new Error('Umbral de compactación no válido.');
         break;
       case 'opencodePath':
         if (value !== null && (typeof value !== 'string' || value.length > 1024 || /[&|<>^"`\r\n\u0000]/.test(value))) {
@@ -250,7 +264,19 @@ function registerIpc({ backend, settings, getWindow, uiCheck }) {
     return error ? { ok: false, error } : { ok: true };
   });
 
-  ipcMain.handle('oc:setup:check', async () => setup.check(settings.get().opencodePath));
+  ipcMain.handle('oc:setup:check', async (_event, force = false) => {
+    const current = settings.get();
+    const fresh = Date.now() - (current.lastUpdateCheck || 0) < 24 * 60 * 60 * 1000;
+    const cachedLatest = !force && fresh ? (current.latestKnownVersion || '') : '';
+    const report = await setup.check(current.opencodePath, cachedLatest);
+    if (!cachedLatest) {
+      await settings.set({
+        lastUpdateCheck: Date.now(),
+        latestKnownVersion: report.opencode.latest || current.latestKnownVersion || '',
+      });
+    }
+    return report;
+  });
   ipcMain.handle('oc:setup:install', async (_event, id) => {
     if (typeof id !== 'string') return { ok: false, error: 'Componente no válido.' };
     return setup.install(id, { window: getWindow(), opencodePath: settings.get().opencodePath });

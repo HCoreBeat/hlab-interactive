@@ -207,6 +207,54 @@ body.is-resizing .side-panel { transition: none; }
 .chat-live.is-error { border-color: rgba(244, 121, 111, 0.5); color: var(--red); background: var(--red-soft); }
 .chat-live b { font-weight: 600; }
 
+/* Medidor de contexto: cuánto se reenvía al proveedor en cada mensaje. */
+.chat-context {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 9px 3px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font: 600 0.68rem/1 var(--mono);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.chat-context[hidden] { display: none; }
+.chat-context:hover { border-color: var(--accent); color: var(--text); }
+.chat-context:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chat-context-bar {
+  display: inline-block;
+  flex: none;
+  width: 34px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.chat-context-bar i {
+  display: block;
+  width: 4%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--green);
+  transition: width 180ms ease;
+}
+.chat-context.is-warn {
+  border-color: rgba(214, 158, 46, 0.55);
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+.chat-context.is-warn .chat-context-bar i { background: var(--amber); }
+.chat-context.is-danger {
+  border-color: rgba(220, 96, 88, 0.6);
+  background: var(--red-soft);
+  color: var(--red);
+}
+.chat-context.is-danger .chat-context-bar i { background: var(--red); }
+.chat-context:disabled { opacity: 0.6; cursor: progress; }
+
 /* ============================================================= topbar ==== */
 
 .topbar {

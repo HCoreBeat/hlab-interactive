@@ -140,6 +140,46 @@ export function messagesOf(sessionID) {
   return state.messages[sessionID] || [];
 }
 
+/**
+ * Contexto que el proveedor recibe en cada turno. El prompt incluye también los
+ * tokens servidos desde la caché del proveedor: la caché abarata la factura,
+ * pero el cuerpo de la petición sigue viajando entero, así que cuenta para el
+ * consumo de datos. Se toma del último uso conocido (mensaje o sesión).
+ */
+export function contextUsageOf(sessionID = state.activeSessionId) {
+  if (!sessionID) return null;
+  const messages = state.messages[sessionID] || [];
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const usage = contextFromTokens(messages[index]?.stats?.tokens);
+    if (usage) return { ...usage, messageID: messages[index].id, at: messages[index].time || 0 };
+  }
+  const usage = contextFromTokens(sessionById(sessionID)?.tokens);
+  return usage ? { ...usage, messageID: '', at: 0 } : null;
+}
+
+/** Normaliza las formas de `TokenUsage` que usan las distintas versiones del servidor. */
+function contextFromTokens(tokens) {
+  if (!tokens) return null;
+  const cacheRead = Number(tokens.cache?.read) || 0;
+  const cacheWrite = Number(tokens.cache?.write) || 0;
+  const input = Number(tokens.input) || 0;
+  // Algunas versiones informan `total` ya con la caché incluida.
+  const explicitTotal = Number(tokens.total) || 0;
+  const contextTokens = explicitTotal > 0
+    ? Math.max(explicitTotal, input + cacheRead + cacheWrite)
+    : input + cacheRead + cacheWrite;
+  if (contextTokens <= 0) return null;
+  return {
+    tokens: contextTokens,
+    input,
+    cacheRead,
+    cacheWrite,
+    output: Number(tokens.output) || 0,
+    // ~4 bytes por token es una aproximación razonable en texto y código.
+    bytes: Math.round(contextTokens * 4),
+  };
+}
+
 export function runtimeOf(sessionID) {
   return state.runtime[sessionID] || { busy: false, outcome: null, tool: null, startedAt: 0, doneAt: 0, errorAt: 0 };
 }
@@ -482,8 +522,36 @@ export function appendMessage(sessionID, message) {
   set({ messages: { ...state.messages, [sessionID]: [...list, message] } });
 }
 
+// El inspector no necesita megabytes: se limita el peso total del registro
+// además del número de eventos (unos pocos tool outputs enormes lo hinchaban).
+const EVENT_BYTES = 2 * 1024 * 1024;
+const eventSizes = new WeakMap();
+const sizeOfEvent = (event) => {
+  if (!event || typeof event !== 'object') return 0;
+  let size = eventSizes.get(event);
+  if (size === undefined) {
+    try {
+      size = JSON.stringify(event).length;
+    } catch {
+      size = 0;
+    }
+    eventSizes.set(event, size);
+  }
+  return size;
+};
+
 export function pushEvent(event) {
   const events = [...state.events, event];
   if (events.length > 500) events.splice(0, events.length - 500);
+  let bytes = 0;
+  let cut = 0;
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    bytes += sizeOfEvent(events[index]);
+    if (bytes > EVENT_BYTES) {
+      cut = index + 1;
+      break;
+    }
+  }
+  if (cut > 0) events.splice(0, cut);
   set({ events });
 }

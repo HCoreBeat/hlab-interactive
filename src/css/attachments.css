@@ -6,7 +6,9 @@
 .composer #attach-btn { grid-column: 1; grid-row: 2; align-self: end; height: 38px; min-width: 38px; border-radius: 10px; }
 .composer #prompt-input { grid-column: 2; grid-row: 2; }
 .composer #send-btn { grid-column: 3; grid-row: 2; }
-.composer .composer-hint { grid-column: 1 / -1; grid-row: 3; }
+/* Fila inferior: medidor de contexto + pista del compositor. */
+.composer .composer-meta { grid-column: 1 / -1; grid-row: 3; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.composer .composer-hint { grid-column: auto; grid-row: auto; flex: 1; min-width: 0; }
 
 .att-btn { background: var(--surface-2); border: 1px solid var(--border-strong); color: var(--text-dim); transition: border-color 140ms ease, color 140ms ease, background 140ms ease, transform 100ms ease; }
 .att-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }

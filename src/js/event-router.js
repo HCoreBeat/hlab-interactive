@@ -325,6 +325,7 @@ export function handleEvent(event, deps = {}) {
       });
       patchSession(sessionID, { outcome });
       deps.onSessionsChanged?.();
+      deps.onSessionSettled?.(sessionID);
       if (errorMessage) deps.onSessionError?.(sessionID, errorMessage);
       return;
     }

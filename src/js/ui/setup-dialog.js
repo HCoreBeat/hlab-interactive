@@ -120,7 +120,7 @@ export function openSetupDialog({ onRestartServer, autoInstall = null } = {}) {
     write('\nVerificando dependencias y versiones…\n');
     setBusy(true);
     try {
-      report = await window.oc.setup.check();
+      report = await window.oc.setup.check(true);
       write(report.ready ? 'Verificación completada.\n' : 'Faltan componentes obligatorios.\n');
     } catch (error) {
       write(`No se pudo verificar: ${error.message}\n`);
@@ -164,7 +164,7 @@ export function openSetupDialog({ onRestartServer, autoInstall = null } = {}) {
 export async function checkEnvironmentOnStart({ onRestartServer, force = false } = {}) {
   let report;
   try {
-    report = await window.oc.setup.check();
+    report = await window.oc.setup.check(force);
   } catch {
     return null;
   }

@@ -1475,6 +1475,66 @@ async function runUiCheck(win, { app, directory }) {
       })()
     `);
     await win.webContents.executeJavaScript("window.oc.settings.set({ theme: 'dark' })");
+
+    // Medidor de contexto y compactación: lo que de verdad reduce los MB que se
+    // suben al proveedor en cada mensaje.
+    report.contextMeter = await win.webContents.executeJavaScript(`
+      (async () => {
+        const st = window.__ocState?.();
+        const sessionID = st?.activeSessionId;
+        if (!sessionID || typeof window.__ocTestEvent !== 'function') return { ok: false, reason: 'sin sesión activa' };
+        const assistantID = 'msg_test_context';
+        window.__ocTestEvent({
+          id: 'evt_test_context_start', created: Date.now(), type: 'session.step.started',
+          data: { sessionID, assistantMessageID: assistantID, agent: 'build' },
+        });
+        window.__ocTestEvent({
+          id: 'evt_test_context_end', created: Date.now(), type: 'session.step.ended',
+          data: {
+            sessionID, assistantMessageID: assistantID, finish: 'stop', cost: 0,
+            tokens: { input: 1000, output: 200, reasoning: 0, cache: { read: 119000, write: 0 } },
+          },
+        });
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        const chip = document.getElementById('chat-context');
+        const before = {
+          hidden: chip?.hidden !== false,
+          tokens: Number(chip?.dataset?.tokens || 0),
+          bytes: Number(chip?.dataset?.bytes || 0),
+          label: document.getElementById('chat-context-label')?.textContent || '',
+          danger: chip?.classList.contains('is-danger') || false,
+        };
+        chip?.click();
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        const confirm = [...document.querySelectorAll('.modal footer button')]
+          .find((button) => /Compactar/i.test(button.textContent || ''));
+        const dialogShown = Boolean(confirm);
+        confirm?.click();
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        const after = {
+          tokens: Number(document.getElementById('chat-context')?.dataset?.tokens || 0),
+          toast: [...document.querySelectorAll('.toast')].map((node) => node.textContent || '').join(' | '),
+        };
+        return {
+          ok: true,
+          before,
+          dialogShown,
+          after,
+          requested: /Compactaci[oó]n solicitada/i.test(after.toast),
+        };
+      })()
+    `);
+    await capture(win, target, '19-medidor-contexto.png');
+    report.contextOk = Boolean(
+      report.contextMeter?.ok
+      && report.contextMeter.before?.hidden === false
+      && report.contextMeter.before?.tokens >= 120000
+      && report.contextMeter.before?.danger
+      && /MB|KB/.test(report.contextMeter.before?.label || '')
+      && report.contextMeter.dialogShown
+      && report.contextMeter.requested,
+    );
+
     report.speechEngine = await win.webContents.executeJavaScript(`
       (() => {
         const text = '# Título\\n\\nUse npm run dist y lea más.\\nSegunda frase.';

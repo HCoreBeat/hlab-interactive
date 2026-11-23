@@ -480,6 +480,7 @@ async function executeSelected() {
         onCommandExecute.onOpenSetup?.();
         break;
       case 'runCommand':
+        if (cmd.payload === 'compact') { onCommandExecute.onCompact?.(); break; }
         await onCommandExecute.onRunCommand?.(cmd.payload);
         break;
       case 'toggleThinking':

@@ -301,6 +301,34 @@ export function openSettings({ onRestart, onDemoChange } = {}) {
     }),
   ]);
 
+  // Gastar menos datos: cada mensaje reenvía todo el contexto al proveedor.
+  const dataSection = el('section', { class: 'settings-section' }, [
+    el('h3', { text: 'Datos y contexto' }),
+    el('p', {
+      class: 'muted tiny',
+      text: 'Cada mensaje sube al proveedor toda la conversación anterior. La forma de gastar menos megas es compactar el contexto: el agente resume el historial y los envíos siguientes son mucho más pequeños.',
+    }),
+    toggleRow({
+      label: 'Compactar el contexto automáticamente',
+      hint: 'Resume la conversación al llegar al umbral. Se conserva un resumen con objetivos, decisiones y trabajo pendiente.',
+      checked: current.autoCompact !== false,
+      onChange: (value) => save({ autoCompact: value }),
+    }),
+    select({
+      label: 'Umbral de compactación',
+      hint: 'Cuánto contexto se acumula antes de resumir. Más bajo = menos datos por mensaje, pero menos detalle.',
+      value: String(current.autoCompactTokens || 60000),
+      options: [
+        { value: '20000', label: '20.000 tokens (ahorro máximo)' },
+        { value: '40000', label: '40.000 tokens' },
+        { value: '60000', label: '60.000 tokens (recomendado)' },
+        { value: '120000', label: '120.000 tokens' },
+        { value: '200000', label: '200.000 tokens' },
+      ],
+      onChange: (value) => save({ autoCompactTokens: Number(value) || 60000 }),
+    }),
+  ]);
+
   const permissionsSection = el('section', { class: 'settings-section' }, [
     el('h3', { text: 'Permisos de las sesiones nuevas' }),
     toggleRow({
@@ -376,7 +404,7 @@ export function openSettings({ onRestart, onDemoChange } = {}) {
   let timer = null;
   const modal = openModal({
     title: 'Ajustes',
-    body: el('div', { class: 'settings-grid' }, [connectionSection, opencodeSection, appearanceSection, soundSection, chatSection, permissionsSection, subagentSection, demoSection, infoSection]),
+    body: el('div', { class: 'settings-grid' }, [connectionSection, opencodeSection, appearanceSection, soundSection, chatSection, dataSection, permissionsSection, subagentSection, demoSection, infoSection]),
     footer: el('button', { class: 'btn-primary', type: 'button', text: 'Cerrar', onClick: () => modal.close() }),
     width: 'min(720px, 100%)',
     onClose: () => clearInterval(timer),

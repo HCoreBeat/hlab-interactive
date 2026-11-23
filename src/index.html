@@ -125,7 +125,15 @@
           <textarea id="prompt-input" rows="1" placeholder="Escribe un mensaje…  (Enter envía, Shift+Enter salto de línea, / comandos, ! shell)"
                     aria-label="Mensaje para el agente"></textarea>
           <div class="composer-actions">
-            <span class="composer-hint" id="composer-hint"></span>
+            <div class="composer-meta">
+              <button class="chat-context" id="chat-context" type="button" hidden
+                      title="Contexto que se reenvía al proveedor en cada mensaje">
+                <span class="chat-context-bar" aria-hidden="true"><i id="chat-context-fill"></i></span>
+                <span id="chat-context-label">Contexto —</span>
+                <span class="chat-context-action">Compactar</span>
+              </button>
+              <span class="composer-hint" id="composer-hint"></span>
+            </div>
             <button class="btn-primary" id="send-btn" type="button">Enviar</button>
           </div>
         </div>
