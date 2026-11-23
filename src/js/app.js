@@ -10,6 +10,8 @@ import { handleEvent, normalizeHistory, setHistory } from './event-router.js';
 import { createSessionController } from './session-controller.js';
 import { basename } from './util/format.js';
 import { setLocale, startDomObserver, t } from './i18n.js';
+import { speechChunks, pickVoice } from './ui/speech.js';
+import { closeTopEscape } from './ui/escape-stack.js';
 import { mountTopbar } from './ui/topbar.js';
 import { mountOfficePixelArt } from './ui/office-pixelart.js';
 import { mountChat } from './ui/chat.js';
@@ -325,7 +327,11 @@ async function reloadSessions() {
   const roots = new Set(sessions.map((session) => session.id));
   const known = new Map(state.subagents.map((child) => [child.id, child]));
   for (const child of fetchedChildren) {
-    known.set(child.id, { ...(known.get(child.id) || {}), ...child });
+    const previous = known.get(child.id);
+    const merged = { ...(previous || {}), ...child };
+    const parent = child.parentID ? sessionById(child.parentID) || sessions.find((item) => item.id === child.parentID) : null;
+    if (previous?.agent && (!child.agent || child.agent === parent?.agent)) merged.agent = previous.agent;
+    known.set(child.id, merged);
   }
   const subagents = [...known.values()].filter((child) => roots.has(child.parentID));
   const activeStillExists = Boolean(sessionById(state.activeSessionId));
@@ -360,6 +366,13 @@ async function ensureSubagents(parentID) {
       const merged = previousIsNewer
         ? { ...child, ...previous }
         : { ...previous, ...child };
+      // El `agent` del step es la identidad real del subagente. Si el servidor
+      // no lo trae (o trae el del padre), conservamos el que ya derivamos del
+      // evento para que la fila no vuelva a mostrar "build".
+      const parent = sessionById(parentID);
+      if (previous?.agent && (!child.agent || child.agent === parent?.agent)) {
+        merged.agent = previous.agent;
+      }
       if (!previous || JSON.stringify(merged) !== JSON.stringify(previous)) {
         known.set(child.id, merged);
         changed = true;
@@ -789,11 +802,16 @@ function wireIpc() {
   });
 
   document.addEventListener('keydown', (event) => {
-    const modalOpen = Boolean(document.querySelector('.modal-backdrop'));
+    const modalOpen = Boolean(document.querySelector(
+      '.modal-backdrop, .lightbox, .command-palette-backdrop, .chat-search:not([hidden])',
+    ));
     if (event.key === 'Escape' && !modalOpen) {
       // La primera persona captura Escape antes (window, fase de captura) para
       // salir del modo sin abortar la respuesta del agente.
       if (office?.isFirstPerson?.()) return;
+      // Los paneles abiertos encima (p. ej. el diff de Source Control) se cierran
+      // primero. El lateral solo se cierra cuando no hay nada por encima.
+      if (closeTopEscape()) return;
       if (state.ui.railOpen) {
         setUI({ railOpen: false });
         return;
@@ -813,7 +831,9 @@ function wireIpc() {
     else if (key === 'j') { event.preventDefault(); showTab('terminal'); }
     else if (['1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(event.key)) {
       event.preventDefault();
-      showTab(PANEL_KEYS[Number(event.key) - 1]);
+      // El 0 abre el décimo panel (Source Control).
+      const index = event.key === '0' ? PANEL_KEYS.length - 1 : Number(event.key) - 1;
+      if (PANEL_KEYS[index]) showTab(PANEL_KEYS[index]);
     }
   });
 
@@ -873,6 +893,11 @@ async function boot() {
       window.__ocTestEvent = (event) => handleEvent(event, eventDeps);
       window.__ocState = () => state;
       window.__ocTranslate = (text) => t(text);
+      window.__ocSpeech = {
+        chunks: (text) => speechChunks(text),
+        voice: (lang) => pickVoice(lang)?.name || null,
+      };
+      window.__ocSelectSession = (id) => selectSession(id);
       window.__ocOpenProject = (dir) => openProject(dir, { silent: true });
       window.__ocSelectFile = (filePath) => {
         showTab('files');

@@ -172,15 +172,26 @@ function upsertChangedFile(file) {
 }
 
 function upsertShell(sessionID, shellID, patch) {
-  const index = state.shells.findIndex((item) => item.id === shellID);
+  // La clave es (sesión, shell): un mismo shellID en dos sesiones no debe
+  // sobrescribir la salida de la otra.
+  const index = sessionID
+    ? state.shells.findIndex((item) => item.id === shellID && item.sessionID === sessionID)
+    : state.shells.findIndex((item) => item.id === shellID);
   let next;
   if (index === -1) {
     next = [...state.shells, { id: shellID, sessionID, status: 'running', output: '', startedAt: Date.now(), ...patch }];
   } else {
     next = state.shells.slice();
-    next[index] = { ...next[index], ...patch };
+    next[index] = { ...next[index], ...patch, ...(sessionID ? { sessionID } : {}) };
   }
   set({ shells: next });
+}
+
+/** Resuelve la sesión de un evento de shell que no la trae (shell.exited). */
+function shellSessionID(data, sessionID) {
+  if (sessionID) return sessionID;
+  const found = state.shells.find((item) => item.id === (data.id || data.shell?.id));
+  return found?.sessionID || null;
 }
 
 /** Reads the error payload of a failed turn (string or object). */
@@ -320,6 +331,10 @@ export function handleEvent(event, deps = {}) {
 
     case 'session.step.started': {
       ensureAssistant(sessionID, data.assistantMessageID, { agent: data.agent, model: data.model });
+      // El `agent` del step es la identidad real de quien ejecuta el turno: en
+      // los subagentes es la única fuente fiable (la sesión hija puede nacer con
+      // el agente del padre). Lo guardamos en la sesión para que la UI lo pinte.
+      if (data.agent) patchSession(sessionID, { agent: data.agent });
       patchRuntime(sessionID, { assistantMessageID: data.assistantMessageID, tool: null, errorMessage: '', errorAt: 0 });
       return;
     }
@@ -540,9 +555,13 @@ export function handleEvent(event, deps = {}) {
     case 'session.question.replied':
     case 'session.question.rejected': {
       const requestID = data.requestID || data.id || data.requestId || null;
+      const sid = data.sessionID || sessionID;
       set({
+        // Sin sesión conocida no tocamos las tarjetas sintéticas: borrar las de
+        // todas las sesiones rompía el aislamiento entre ellas.
         questions: (state.questions || []).filter((entry) => (
-          entry.id !== requestID && !(entry.synthetic && (!data.sessionID || entry.sessionID === data.sessionID))
+          !(entry.id === requestID && (!sid || entry.sessionID === sid))
+          && !(entry.synthetic && sid && entry.sessionID === sid && entry.id === requestID)
         )),
         permissions: [...state.permissions],
       });
@@ -558,9 +577,15 @@ export function handleEvent(event, deps = {}) {
       return;
     }
 
-    case 'permission.replied':
-      set({ permissions: state.permissions.filter((item) => item.id !== data.requestID) });
+    case 'permission.replied': {
+      const sid = data.sessionID || sessionID;
+      set({
+        permissions: state.permissions.filter((item) => (
+          !(item.id === data.requestID && (!sid || item.sessionID === sid))
+        )),
+      });
       return;
+    }
 
     case 'file.edited':
       if (data.file) {
@@ -589,7 +614,14 @@ export function handleEvent(event, deps = {}) {
       return;
 
     case 'shell.exited':
-      if (data.id) upsertShell(sessionID, data.id, { status: data.status || 'exited', exit: data.exit });
+      if (data.id) {
+        // `shell.exited` no trae sessionID: lo resolvemos desde el shell ya
+        // registrado para no crear un bucket huérfano ni mezclar sesiones.
+        upsertShell(shellSessionID(data, sessionID), data.id, {
+          status: data.status || 'exited',
+          exit: data.exit,
+        });
+      }
       return;
 
     case 'session.shell.ended':

@@ -144,6 +144,14 @@ Antes de subir cambios, comprueba que `.gitignore` excluye `node_modules/`, `dis
   sesión. La vista previa tiene un botón **⛶** para ver el archivo a **pantalla completa**
   (las imágenes usan el visor con zoom; el texto/código se abre en un modal amplio con `Esc`
   para cerrar).
+- **Source Control (Ctrl+0)**: panel estilo VS Code con rama, archivos en **Cambios** y
+  **Preparados**, diff integrado al hacer clic, botones de preparar/quitar, mensaje de
+  commit y acciones **Confirmar / Enviar / Traer** con colores propios por tema (azul,
+  verde y ámbar). `Esc` cierra primero el diff abierto y solo después el panel lateral.
+  Todo se ejecuta con `git` del sistema acotado a la carpeta del proyecto y sin shell.
+- **Lectura en voz alta**: limpia Markdown/código, elige la voz más natural disponible
+  (neural/premium) y divide el texto en frases para que suelte fluido. En Ajustes puedes
+  elegir la voz y la velocidad.
 - **Terminal**: consola directa de **PowerShell en la raíz del proyecto** (sin pasar por la
   sesión del agente). La caja de comandos es grande y acepta varias líneas (`Enter` ejecuta,
   `Mayús+Enter` añade línea); muestra la carpeta actual, salida en vivo, código de salida,

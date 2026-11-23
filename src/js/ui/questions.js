@@ -17,7 +17,7 @@
  */
 
 import { el, clear } from '../util/dom.js';
-import { state, set, subscribe, sessionById, runtimeOf } from '../store.js';
+import { state, set, subscribe, sessionById, runtimeOf, questionsOf, activeSession } from '../store.js';
 import { api } from '../api.js';
 import { toast } from './toast.js';
 
@@ -59,7 +59,7 @@ export function mountQuestions() {
   const busy = new Set();
   const failed = new Map();
 
-  const pending = () => (state.questions || []).filter((item) => (
+  const pending = () => questionsOf(activeSession()?.id).filter((item) => (
     !item.synthetic
     || (runtimeOf(item.sessionID).busy && /^question$/i.test(String(runtimeOf(item.sessionID).tool || '')))
   ));
@@ -317,7 +317,7 @@ export function mountQuestions() {
     for (const item of list) root.appendChild(card(item));
   }
 
-  const unsubscribe = subscribe(['questions', 'runtime', 'sessions'], render);
+  const unsubscribe = subscribe(['questions', 'runtime', 'sessions', 'activeSessionId'], render);
   // Mientras un agente usa la herramienta `question` se busca su solicitud real
   // cada 1,5 s: así la tarjeta aparece aunque el evento SSE se pierda.
   const poller = setInterval(async () => {

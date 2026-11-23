@@ -9,6 +9,7 @@ import { uiIcon } from '../util/ui-icons.js';
 import { renderToolCard } from './tool-card.js';
 import { toast } from './toast.js';
 import { agentAvatar, userAvatar, typingIndicator } from './chat-avatars.js';
+import { speakText } from './speech.js';
 import {
   mountAttachments, openLightbox, stageAttachments, imagesOfMessage, attachmentsOfMessage,
 } from './attachments.js';
@@ -175,7 +176,7 @@ export function mountChat(handlers) {
   let acSelection = 0;
   let acItems = [];
   let speakingMessageId = null;
-  let speechUtterance = null;
+  let speechController = null;
 
   // "Abrir archivo" from a tool card jumps to the Archivos panel.
   const toolOptions = {
@@ -247,44 +248,53 @@ export function mountChat(handlers) {
 
   function stopSpeech() {
     const previousMessageID = speakingMessageId;
+    speechController?.cancel();
+    speechController = null;
     speakingMessageId = null;
-    speechUtterance = null;
-    window.speechSynthesis?.cancel();
     updateSpeechButton(previousMessageID);
   }
 
   function speakMessage(messageID, text) {
-    const synthesis = window.speechSynthesis;
-    const Utterance = window.SpeechSynthesisUtterance;
-    if (!synthesis || typeof Utterance !== 'function') {
-      toast('La lectura en voz alta no está disponible en este sistema.', 'warn');
-      return;
-    }
-    if (speakingMessageId === messageID && synthesis.speaking) {
+    if (speakingMessageId === messageID && speechController) {
       stopSpeech();
       return;
     }
-
     const previousMessageID = speakingMessageId;
-    speakingMessageId = null;
-    speechUtterance = null;
-    synthesis.cancel();
+    speechController?.cancel();
+    speechController = null;
+
+    const settings = state.settings || {};
+    const controller = speakText(text, {
+      lang: document.documentElement.lang || navigator.language || 'es-ES',
+      voiceURI: settings.speechVoice || '',
+      rate: Number(settings.speechRate) || 1.02,
+      onStart: () => {
+        speakingMessageId = messageID;
+        updateSpeechButton(messageID);
+      },
+      onProgress: (index, total) => {
+        const button = [...scroll.querySelectorAll('.read-aloud')]
+          .find((item) => item.dataset.messageId === messageID);
+        if (button) button.title = `Leyendo ${index}/${total} · detener`;
+      },
+      onEnd: () => finishSpeech(controller),
+      onError: () => finishSpeech(controller),
+    });
+    if (!controller) {
+      toast('La lectura en voz alta no está disponible en este sistema.', 'warn');
+      return;
+    }
+    speechController = controller;
     speakingMessageId = messageID;
-    const utterance = new Utterance(text);
-    utterance.lang = document.documentElement.lang || navigator.language || 'es-ES';
-    utterance.onend = () => finishSpeech(utterance);
-    utterance.onerror = () => finishSpeech(utterance);
-    speechUtterance = utterance;
     updateSpeechButton(previousMessageID);
     updateSpeechButton(messageID);
-    synthesis.speak(utterance);
   }
 
-  function finishSpeech(utterance) {
-    if (speechUtterance !== utterance) return;
+  function finishSpeech(controller) {
+    if (speechController !== controller) return;
     const messageID = speakingMessageId;
+    speechController = null;
     speakingMessageId = null;
-    speechUtterance = null;
     updateSpeechButton(messageID);
   }
 
@@ -329,6 +339,9 @@ export function mountChat(handlers) {
     const lastUser = [...messages].reverse().find((message) => message.type === 'user');
     const text = lastUser ? (lastUser.text || lastUser.payload?.text || '') : '';
     if (!text) {
+      // Limpiamos también el texto: un banner oculto con el mensaje de otra
+      // sesión es confuso al inspeccionar el DOM y al volver a mostrarlo.
+      userAnchor.querySelector('.chat-anchor-text').textContent = '';
       userAnchor.hidden = true;
       return;
     }

@@ -1,9 +1,10 @@
-import { el } from '../util/dom.js';
+import { el, clear } from '../util/dom.js';
 import { openModal } from './modal.js';
 import { toast } from './toast.js';
 import { state, set as setState } from '../store.js';
 import { getVolume, setVolume } from './office/sound.js';
 import { request } from '../api.js';
+import { speechVoices, speakText } from './speech.js';
 import { SUPPORTED_LOCALES, setLocale, currentLocale } from '../i18n.js';
 
 /**
@@ -219,6 +220,63 @@ export function openSettings({ onRestart, onDemoChange } = {}) {
         return range;
       })(),
     ]),
+    el('label', { class: 'field' }, [
+      el('span', { text: `Velocidad de lectura: ${(current.speechRate || 1.02).toFixed(2)}x` }),
+      (() => {
+        const range = el('input', {
+          type: 'range',
+          min: '0.6',
+          max: '1.6',
+          step: '0.02',
+          value: String(current.speechRate || 1.02),
+          onInput: (event) => {
+            const value = Number(event.target.value);
+            event.target.closest('.field').querySelector('span').textContent = `Velocidad de lectura: ${value.toFixed(2)}x`;
+          },
+          onChange: (event) => save({ speechRate: Number(event.target.value) }),
+        });
+        return range;
+      })(),
+    ]),
+    (() => {
+      const field = el('label', { class: 'field' }, [
+        el('span', { text: 'Voz para leer en voz alta' }),
+      ]);
+      const voiceSelect = el('select');
+      const renderVoices = () => {
+        const selected = current.speechVoice || '';
+        clear(voiceSelect);
+        voiceSelect.appendChild(new Option('Automática (mejor voz disponible)', '', false, !selected));
+        for (const voice of speechVoices()) {
+          voiceSelect.appendChild(new Option(
+            `${voice.name} · ${voice.lang}`,
+            voice.voiceURI,
+            false,
+            voice.voiceURI === selected,
+          ));
+        }
+      };
+      renderVoices();
+      voiceSelect.addEventListener('change', () => save({ speechVoice: voiceSelect.value }));
+      if (window.speechSynthesis) {
+        window.speechSynthesis.addEventListener?.('voiceschanged', renderVoices);
+      }
+      field.appendChild(voiceSelect);
+      field.appendChild(el('button', {
+        class: 'btn-small',
+        type: 'button',
+        text: '▶ Probar voz',
+        title: 'Escuchar una frase de ejemplo con la voz elegida',
+        onClick: () => {
+          speakText('Hola, así sonará la lectura en voz alta de tus respuestas.', {
+            lang: document.documentElement.lang || navigator.language || 'es-ES',
+            voiceURI: voiceSelect.value,
+            rate: Number(current.speechRate) || 1.02,
+          });
+        },
+      }));
+      return field;
+    })(),
     toggleRow({
       label: 'Animaciones',
       hint: 'Desactívalas si prefieres una interfaz estática o usas movimiento reducido.',

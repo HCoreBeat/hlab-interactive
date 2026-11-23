@@ -9,7 +9,7 @@
 import { el, clear } from '../util/dom.js';
 import {
   subscribe, state, permissionsOf, changedFilesOf, activityOf, mcpServersOf, officeSessions,
-  otherProjectWork,
+  otherProjectWork, shellsOf,
 } from '../store.js';
 import { uiIcon } from '../util/ui-icons.js';
 
@@ -32,6 +32,7 @@ export function mountActivityBar({ onSelect, onToggleOffice }) {
     { id: 'mcp', icon: 'mcp', label: 'MCP', key: '7' },
     { id: 'inspector', icon: 'inspector', label: 'Inspector', key: '8' },
     { id: 'notes', icon: 'notes', label: 'Notas', key: '9' },
+    { id: 'git', icon: 'git', label: 'Source Control', key: '0' },
   ];
 
   const buttons = new Map();
@@ -114,7 +115,8 @@ export function mountActivityBar({ onSelect, onToggleOffice }) {
     setBadge('agents', busyCount, true, `${busyCount} agente(s) trabajando`);
     setBadge('activity', actions || 0, true, `${actions} eventos recientes`);
     setBadge('files', files || 0, true, `${files} archivos modificados`);
-    setBadge('terminal', state.shells.length || 0, true, `${state.shells.length} terminal(es)`);
+    const terminals = active ? shellsOf(active).length : 0;
+    setBadge('terminal', terminals || 0, true, `${terminals} terminal(es) de esta sesión`);
     setBadge('context', 0, true);
     setBadge('mcp', mcpServersOf().length || 0, true, `${mcpServersOf().length} servidores MCP`);
     setBadge('inspector', state.events.length || 0, true, `${state.events.length} eventos del servidor`);
@@ -143,6 +145,22 @@ export function mountActivityBar({ onSelect, onToggleOffice }) {
     }
   }
 
+  async function refreshGitBadge() {
+    if (!window.oc.git || !state.project.dir) {
+      setBadge('git', 0);
+      return;
+    }
+    try {
+      const result = await window.oc.git.status(state.project.dir);
+      const count = result.ok ? result.files.length : 0;
+      setBadge('git', count, true, `${count} cambio(s) en Git pendiente(s)`, count > 0 ? 'warn' : '');
+    } catch {
+      setBadge('git', 0);
+    }
+  }
+
+  document.addEventListener('oc:git-changed', () => void refreshGitBadge());
+
   function runtimeFailed(sessionID) {
     const runtime = state.runtime[sessionID];
     return runtime && runtime.outcome === 'failed' && Date.now() - (runtime.errorAt || 0) < 120000;
@@ -154,11 +172,16 @@ export function mountActivityBar({ onSelect, onToggleOffice }) {
   }
 
   build();
+  void refreshGitBadge();
   const unsubscribe = subscribe(
     ['sessions', 'subagents', 'activeSessionId', 'runtime', 'permissions', 'questions', 'activity', 'changedFiles', 'shells', 'events', 'mcpServers', 'ui', 'settings', 'project', 'projects'],
     render,
   );
+  const unsubscribeGit = subscribe(['project'], () => void refreshGitBadge());
   render();
 
-  return { destroy: unsubscribe, render };
+  return {
+    destroy: () => { unsubscribe(); unsubscribeGit(); },
+    render,
+  };
 }

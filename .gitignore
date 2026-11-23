@@ -28,7 +28,9 @@ output.log
 Thumbs.db
 oc-ui-check/
 
+# Documentación interna de desarrollo (no va a GitHub)
 PROMPT.md
+docs/decisiones.md
 
 # Editores
 .vscode/

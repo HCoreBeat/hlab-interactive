@@ -712,6 +712,70 @@ async function runUiCheck(win, { app, directory }) {
       && report.agentPick.hasSearch,
     );
 
+    // Aislamiento: permisos, preguntas y mensajes de una sesión no deben
+    // aparecer al abrir otra, y el subagente debe mostrar su propio agente.
+    report.sessionIsolation = await win.webContents.executeJavaScript(`
+      (async () => {
+        const st = window.__ocState();
+        const roots = st.sessions.filter((session) => !session.parentID);
+        if (roots.length < 2) return { ok: false, reason: 'se necesitan dos sesiones' };
+        const a = roots[0].id;
+        const b = roots[1].id;
+        const dir = st.project.dir;
+        const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        await window.__ocSelectSession(a);
+        await wait(250);
+        window.__ocTestEvent({
+          id: 'evt_perm_' + a, created: Date.now(), type: 'permission.asked',
+          location: { directory: dir },
+          data: { id: 'perm_a', sessionID: a, action: 'edit', metadata: {} },
+        });
+        window.__ocTestEvent({
+          id: 'evt_user_' + a, created: Date.now(), type: 'session.inbox.enqueued',
+          location: { directory: dir },
+          data: { inboxID: 'msg_a', sessionID: a, item: { type: 'user', payload: { text: 'MENSAJE_SESION_A' } } },
+        });
+        await wait(300);
+        const inA = {
+          permission: Boolean(document.querySelector('.permission-card')),
+          anchor: document.querySelector('.chat-anchor-text')?.textContent || '',
+        };
+        await window.__ocSelectSession(b);
+        await wait(400);
+        const stB = window.__ocState();
+        const inB = {
+          permission: Boolean(document.querySelector('.permission-card')),
+          anchor: document.querySelector('.chat-anchor-text')?.textContent || '',
+          active: stB.activeSessionId,
+          expectedB: b,
+          messagesA: (stB.messages[a] || []).filter((m) => m.type === 'user').map((m) => m.text),
+          messagesB: (stB.messages[b] || []).filter((m) => m.type === 'user').map((m) => m.text),
+          statePermission: stB.permissions.some((item) => item.sessionID === a),
+        };
+        await window.__ocSelectSession(a);
+        await wait(300);
+        const backInA = Boolean(document.querySelector('.permission-card'));
+
+        const child = window.__ocState().subagents[0];
+        let childAgent = null;
+        if (child) {
+          window.__ocTestEvent({
+            id: 'evt_step_child', created: Date.now(), type: 'session.step.started',
+            location: { directory: dir },
+            data: { sessionID: child.id, assistantMessageID: 'msg_child', agent: 'general' },
+          });
+          await wait(300);
+          childAgent = window.__ocState().subagents.find((item) => item.id === child.id)?.agent || null;
+        }
+        return {
+          ok: inA.permission && inA.anchor.includes('MENSAJE_SESION_A')
+            && !inB.permission && inB.active === b && !inB.anchor.includes('MENSAJE_SESION_A')
+            && inB.statePermission && backInA && childAgent === 'general',
+          inA, inB, backInA, childAgent,
+        };
+      })()
+    `);
+
     report.sessionsTab = await clickTab(win, 'sessions');
     await sleep(700);
     report.subagentRows = await win.webContents.executeJavaScript(
@@ -1224,6 +1288,7 @@ async function runUiCheck(win, { app, directory }) {
     await win.webContents.executeJavaScript(`
       (() => {
         const input = document.querySelector('.terminal-input');
+        if (!input) return false;
         input.value = "Start-Sleep -Milliseconds 1200; Write-Output 'resiliente'";
         document.querySelector('.terminal-run')?.click();
         return true;
@@ -1312,6 +1377,114 @@ async function runUiCheck(win, { app, directory }) {
           toggled,
           restored,
           ok: gap >= 0 && inside && toggled !== before && restored === before,
+        };
+      })()
+    `);
+
+    // Source Control: el panel debe listar cambios y mostrar un diff real.
+    await win.webContents.executeJavaScript(`
+      (async () => {
+        if (typeof window.__ocOpenProject === 'function') {
+          await window.__ocOpenProject('C:\\\\_WORK\\\\OpenCode Visual');
+        }
+        window.__showPanel?.('git');
+      })()
+    `);
+    for (let attempt = 0; attempt < 15; attempt += 1) {
+      await sleep(250);
+      if (await win.webContents.executeJavaScript("document.querySelectorAll('.git-file').length > 0")) break;
+    }
+    report.gitPanel = await win.webContents.executeJavaScript(`
+      (() => ({
+        branch: document.querySelector('.git-branch')?.textContent || '',
+        changes: document.querySelectorAll('.git-file').length,
+        hasMessage: Boolean(document.querySelector('.git-message')),
+        hasActions: document.querySelectorAll('.git-actions button').length,
+        fileIcons: document.querySelectorAll('.git-file-icon').length,
+        detailHidden: Boolean(document.querySelector('.git-detail')?.hidden),
+        badge: (() => {
+          const badge = document.querySelector('.activity-button[data-view="git"] .activity-badge');
+          return { hidden: badge?.hidden, text: badge?.textContent || '' };
+        })(),
+      }))()
+    `);
+    await win.webContents.executeJavaScript("document.querySelector('.git-file')?.click()");
+    await sleep(500);
+    report.gitDiff = await win.webContents.executeJavaScript(`
+      (() => ({
+        lines: document.querySelectorAll('.git-detail .diff-line').length,
+        hasHead: Boolean(document.querySelector('.git-diff-head')),
+      }))()
+    `);
+    await capture(win, target, '18-source-control.png');
+    await win.webContents.executeJavaScript(`
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    `);
+    await sleep(250);
+    report.gitEscape = await win.webContents.executeJavaScript(`
+      (() => ({
+        detailClosed: !document.querySelector('.git-detail .diff-line'),
+        railStillOpen: !document.getElementById('app').classList.contains('rail-closed'),
+      }))()
+    `);
+    await win.webContents.executeJavaScript(`
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    `);
+    await sleep(200);
+    report.gitEscape.railClosedAfterSecond = await win.webContents.executeJavaScript(
+      "document.getElementById('app').classList.contains('rail-closed')",
+    );
+    report.gitOk = Boolean(
+      report.gitPanel?.changes > 0
+      && report.gitPanel?.hasMessage
+      && report.gitPanel?.hasActions >= 3
+      && report.gitDiff?.hasHead
+      && report.gitDiff?.lines > 0
+      && report.gitPanel?.detailHidden
+      && report.gitPanel?.fileIcons > 0
+      && report.gitPanel?.badge?.hidden === false
+      && Number(report.gitPanel?.badge?.text) > 0
+      && report.gitEscape?.detailClosed
+      && report.gitEscape?.railStillOpen
+      && report.gitEscape?.railClosedAfterSecond,
+    );
+    await win.webContents.executeJavaScript(`
+      (async () => {
+        window.__showPanel?.('git');
+        await window.oc.settings.set({ theme: 'light' });
+      })()
+    `);
+    await sleep(300);
+    await capture(win, target, '18b-source-control-claro.png');
+    report.gitTheme = await win.webContents.executeJavaScript(`
+      (() => {
+        const check = (selector) => {
+          const node = document.querySelector(selector);
+          if (!node) return null;
+          const style = getComputedStyle(node);
+          return { color: style.color, background: style.backgroundColor };
+        };
+        const result = {
+          commit: check('.git-actions .btn-primary'),
+          push: check('.git-actions .git-action-push'),
+          pull: check('.git-actions .git-action-pull'),
+        };
+        result.ok = [result.commit, result.push, result.pull]
+          .every((item) => item && item.color && item.background && item.color !== item.background);
+        return result;
+      })()
+    `);
+    await win.webContents.executeJavaScript("window.oc.settings.set({ theme: 'dark' })");
+    report.speechEngine = await win.webContents.executeJavaScript(`
+      (() => {
+        const text = '# Título\\n\\nUse npm run dist y lea más.\\nSegunda frase.';
+        const chunks = window.__ocSpeech?.chunks(text) || [];
+        return {
+          chunks,
+          voice: window.__ocSpeech?.voice('es-ES') || null,
+          ok: chunks.length >= 1 && chunks.every((item) => item.length <= 180)
+            && !chunks.some((item) => item.includes('#'))
+            && chunks.join(' ').includes('npm run dist'),
         };
       })()
     `);

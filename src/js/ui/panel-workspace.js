@@ -18,6 +18,7 @@ import { mountFolderManager } from './folder-manager.js';
 import { mountMCPanel } from './mcp-panel.js';
 import { mountInspector } from './inspector.js';
 import { mountNotesPanel } from './notes-panel.js';
+import { mountGitPanel } from './git-panel.js';
 
 export const PANELS = {
   sessions: { label: 'Sesiones', icon: 'sessions', mount: mountSessions },
@@ -29,6 +30,7 @@ export const PANELS = {
   mcp: { label: 'MCP', icon: 'mcp', mount: mountMCPanel },
   inspector: { label: 'Inspector', icon: 'inspector', mount: mountInspector },
   notes: { label: 'Notas', icon: 'notes', mount: mountNotesPanel },
+  git: { label: 'Source Control', icon: 'git', mount: mountGitPanel },
 };
 
 export const PANEL_KEYS = Object.keys(PANELS);

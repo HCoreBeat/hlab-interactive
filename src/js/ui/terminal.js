@@ -1,6 +1,6 @@
 import { el, clear } from '../util/dom.js';
 import {
-  state, set, subscribe, terminalRuns, beginTerminalRun,
+  state, set, subscribe, terminalRunsOf, shellsOf, activeSession, beginTerminalRun,
 } from '../store.js';
 import { basename, formatDuration, formatTime } from '../util/format.js';
 import { toast } from './toast.js';
@@ -230,8 +230,8 @@ export function mountTerminal(container, handlers) {
     cwdLabel.title = state.project.dir || 'Sin carpeta de proyecto';
 
     clear(list);
-    const direct = terminalRuns().map((entry) => ({ kind: 'terminal', ...entry }));
-    const fromSession = state.shells.map((shell) => ({ ...shell, kind: 'session' }));
+    const direct = terminalRunsOf(state.project.dir).map((entry) => ({ kind: 'terminal', ...entry }));
+    const fromSession = shellsOf(activeSession()?.id).map((shell) => ({ ...shell, kind: 'session' }));
     const entries = [...direct, ...fromSession]
       .filter((entry) => entry.startedAt)
       .sort((a, b) => Number(b.startedAt) - Number(a.startedAt));

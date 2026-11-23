@@ -114,6 +114,35 @@ const oc = {
       return ipcRenderer.invoke('oc:workspace:unregister');
     },
   },
+  git: {
+    status(directory) {
+      return ipcRenderer.invoke('oc:git:status', directory);
+    },
+    diff(directory, file, staged) {
+      return ipcRenderer.invoke('oc:git:diff', directory, file, staged);
+    },
+    stage(directory, file) {
+      return ipcRenderer.invoke('oc:git:stage', directory, file);
+    },
+    unstage(directory, file) {
+      return ipcRenderer.invoke('oc:git:unstage', directory, file);
+    },
+    commit(directory, message) {
+      return ipcRenderer.invoke('oc:git:commit', directory, message);
+    },
+    push(directory) {
+      return ipcRenderer.invoke('oc:git:push', directory);
+    },
+    pull(directory) {
+      return ipcRenderer.invoke('oc:git:pull', directory);
+    },
+    branch(directory) {
+      return ipcRenderer.invoke('oc:git:branch', directory);
+    },
+    log(directory) {
+      return ipcRenderer.invoke('oc:git:log', directory);
+    },
+  },
   windowControls: {
     minimize() {
       return ipcRenderer.invoke('oc:window:minimize');

@@ -8,6 +8,8 @@ const DEFAULTS = {
   locale: 'es',
   animations: true,
   fontSize: 14,
+  speechRate: 1.02,
+  speechVoice: '',
   recentProjects: [],
   lastProject: null,
   connection: { mode: 'spawn', url: '', password: '' },

@@ -149,8 +149,17 @@ export function permissionsOf(sessionID) {
   return [...state.permissions, ...(state.questions || [])].filter((item) => item.sessionID === sessionID);
 }
 
+export function questionsOf(sessionID) {
+  return (state.questions || []).filter((item) => item.sessionID === sessionID);
+}
+
 export function shellsOf(sessionID) {
   return state.shells.filter((shell) => shell.sessionID === sessionID);
+}
+
+export function terminalRunsOf(directory) {
+  const runs = state.terminal || [];
+  return directory ? runs.filter((run) => sameDirectory(run.directory, directory)) : runs;
 }
 
 /** Agentes que pueden asignarse a una sesión principal. */
@@ -220,8 +229,16 @@ export function activityOf(sessionID) {
   return state.activity.filter((item) => item.sessionID === sessionID);
 }
 
-export function changedFilesOf(sessionID) {
-  return state.changedFiles.filter((file) => !sessionID || file.sessionID === sessionID);
+export function changedFilesOf(sessionID = state.activeSessionId) {
+  return state.changedFiles.filter((file) => file.sessionID === sessionID);
+}
+
+/** Explícito: todos los archivos del proyecto activo (para "Ver todas"). */
+export function allChangedFiles() {
+  const ids = new Set([...(state.sessions || []), ...(state.subagents || [])]
+    .filter((session) => sameDirectory(session.location?.directory || state.project.dir, state.project.dir))
+    .map((session) => session.id));
+  return state.changedFiles.filter((file) => ids.has(file.sessionID));
 }
 
 export function sessionsOf() {

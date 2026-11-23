@@ -1,5 +1,5 @@
 import { el, clear } from '../util/dom.js';
-import { subscribe, state, sessionById } from '../store.js';
+import { subscribe, state, sessionById, permissionsOf, activeSession } from '../store.js';
 import { renderDiff } from './diff.js';
 import { toast } from './toast.js';
 
@@ -107,12 +107,12 @@ export function mountPermissions() {
 
   function render() {
     clear(root);
-    const pending = state.permissions;
+    const pending = permissionsOf(activeSession()?.id);
     root.hidden = pending.length === 0;
     for (const permission of pending) root.appendChild(card(permission));
   }
 
-  const unsubscribe = subscribe(['permissions', 'sessions'], render);
+  const unsubscribe = subscribe(['permissions', 'questions', 'sessions', 'activeSessionId'], render);
   render();
   return { destroy: unsubscribe, render };
 }

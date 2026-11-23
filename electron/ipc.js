@@ -5,13 +5,15 @@ const { DIRECTORY: DEMO_DIRECTORY } = require('./demo-source');
 const setup = require('./setup');
 const ocConfig = require('./opencode-config');
 const terminal = require('./terminal');
+const git = require('./git');
 
 const METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 const MAX_BODY = 5 * 1024 * 1024;
 const MAX_SETTING = 1024 * 1024;
 
 const ALLOWED_SETTINGS = new Set([
-  'theme', 'locale', 'fontSize', 'animations', 'demo', 'archiveSubagents',
+  'theme', 'locale', 'fontSize', 'speechRate', 'speechVoice',
+  'animations', 'demo', 'archiveSubagents',
   'opencodePath', 'lastProject', 'connection', 'permissions', 'recentProjects',
   'preferredModel', 'preferredAgent', 'projectFolders', 'projectNotes',
   'modelByProject', 'agentByProject', 'sessionFolders', 'layout', 'panel', 'panelLayout',
@@ -49,6 +51,12 @@ function sanitizeSettings(partial) {
         break;
       case 'fontSize':
         if (!Number.isFinite(value) || value < 10 || value > 24) throw new Error('Tamaño de fuente no válido.');
+        break;
+      case 'speechRate':
+        if (!Number.isFinite(value) || value < 0.6 || value > 1.6) throw new Error('Velocidad de voz no válida.');
+        break;
+      case 'speechVoice':
+        if (value !== null && (typeof value !== 'string' || value.length > 300)) throw new Error('Voz no válida.');
         break;
       case 'animations':
       case 'demo':
@@ -158,6 +166,17 @@ function registerIpc({ backend, settings, getWindow, uiCheck }) {
   ipcMain.handle('oc:terminal:script', async (_event, options = {}) => terminal.runScript(options, sendTerminal));
   ipcMain.handle('oc:terminal:version', async (_event, options = {}) => terminal.bumpVersion(options, sendTerminal));
   ipcMain.handle('oc:terminal:dispose', async () => { terminal.killAll(); });
+
+  // Source Control (Git): todas las rutas se validan en electron/git.js.
+  ipcMain.handle('oc:git:status', async (_event, directory) => git.status(directory));
+  ipcMain.handle('oc:git:diff', async (_event, directory, file, staged) => git.diff(directory, file, staged));
+  ipcMain.handle('oc:git:stage', async (_event, directory, file) => git.stage(directory, file));
+  ipcMain.handle('oc:git:unstage', async (_event, directory, file) => git.unstage(directory, file));
+  ipcMain.handle('oc:git:commit', async (_event, directory, message) => git.commit(directory, message));
+  ipcMain.handle('oc:git:push', async (_event, directory) => git.push(directory));
+  ipcMain.handle('oc:git:pull', async (_event, directory) => git.pull(directory));
+  ipcMain.handle('oc:git:branch', async (_event, directory) => git.branch(directory));
+  ipcMain.handle('oc:git:log', async (_event, directory) => git.log(directory));
 
   ipcMain.handle('oc:server:start', async (_event, options = {}) => {
     const projectDir = typeof options.projectDir === 'string' ? options.projectDir : undefined;

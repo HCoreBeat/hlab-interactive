@@ -1,5 +1,7 @@
 import { el, clear } from '../util/dom.js';
-import { subscribe, state, changedFilesOf, activeSession, sessionById } from '../store.js';
+import {
+  subscribe, state, changedFilesOf, allChangedFiles, activeSession, sessionById,
+} from '../store.js';
 import { listDirectory, findFiles, readFile, readFileAsset } from '../api.js';
 import { basename, truncate } from '../util/format.js';
 import { renderDiff } from './diff.js';
@@ -200,7 +202,9 @@ export function mountFiles(container) {
   }
 
   function changedFileOf(path) {
-    return changedFilesOf().find((file) => file.file === path || file.file.endsWith(path) || path.endsWith(file.file));
+    return changedFilesOf(activeSession()?.id).find((file) => (
+      file.file === path || file.file.endsWith(path) || path.endsWith(file.file)
+    ));
   }
 
   function renderPreview() {
@@ -314,7 +318,7 @@ export function mountFiles(container) {
     clear(modifiedBox);
     const active = activeSession();
     const rootID = active ? rootOf(active.id) : null;
-    const everything = changedFilesOf();
+    const everything = allChangedFiles();
     const files = filesScope === 'all' || !rootID
       ? everything
       : everything.filter((file) => rootOf(file.sessionID) === rootID);
