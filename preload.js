@@ -83,6 +83,20 @@ const oc = {
       return ipcRenderer.invoke('oc:app:info');
     },
   },
+  traffic: {
+    get() {
+      return ipcRenderer.invoke('oc:traffic:get');
+    },
+    reset() {
+      return ipcRenderer.invoke('oc:traffic:reset');
+    },
+    noteAgent(up, down) {
+      return ipcRenderer.invoke('oc:traffic:agent', { up, down });
+    },
+    onUpdate(callback) {
+      return subscribe('oc:traffic:updated', callback);
+    },
+  },
   setup: {
     check(force = false) {
       return ipcRenderer.invoke('oc:setup:check', force);

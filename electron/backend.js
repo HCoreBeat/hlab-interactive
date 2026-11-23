@@ -6,6 +6,29 @@ const { ApiClient } = require('./api-client');
 const { ServerManager } = require('./server-manager');
 const { SseClient } = require('./sse-client');
 const { DemoSource } = require('./demo-source');
+const traffic = require('./traffic');
+
+/** Bytes que ocupa una respuesta ya decodificada (aprox. del cuerpo real). */
+function payloadSize(data) {
+  if (data === null || data === undefined) return 0;
+  if (typeof data === 'string') return Buffer.byteLength(data, 'utf8');
+  if (typeof data === 'object' && typeof data.base64 === 'string') {
+    return Math.ceil((data.base64.length * 3) / 4);
+  }
+  try {
+    return Buffer.byteLength(JSON.stringify(data), 'utf8');
+  } catch {
+    return 0;
+  }
+}
+
+function hostOf(url) {
+  try {
+    return new URL(String(url || '')).host || '';
+  } catch {
+    return '';
+  }
+}
 
 /**
  * Owns the connection to opencode (or the demo source) and funnels everything
@@ -31,6 +54,14 @@ class Backend extends EventEmitter {
     this.sse.on('state', (state) => {
       this.sseState = state;
       this.emit('sse-state', state);
+    });
+    // El flujo SSE también es tráfico: se cuenta por trozos para no inflar el
+    // número de peticiones (un turno llega en decenas de fragmentos).
+    this.sse.onBytes = (bytes) => traffic.note({
+      kind: 'eventos',
+      host: hostOf(this.sse.baseUrl),
+      down: bytes,
+      count: false,
     });
   }
 
@@ -135,8 +166,25 @@ class Backend extends EventEmitter {
   // ---------------------------------------------------------- requests ----
 
   async request(method, path, options = {}) {
-    if (this.demoEnabled) return this.demo.request(method, path, options);
-    return this.api.request(method, path, options);
+    if (this.demoEnabled) {
+      const result = await this.demo.request(method, path, options);
+      traffic.note({
+        kind: 'demo',
+        host: 'modo demo',
+        local: true,
+        up: options.body === undefined ? 0 : payloadSize(options.body),
+        down: payloadSize(result?.data),
+      });
+      return result;
+    }
+    const result = await this.api.request(method, path, options);
+    traffic.note({
+      kind: 'api',
+      host: hostOf(this.api.baseUrl),
+      up: options.body === undefined ? 0 : payloadSize(options.body),
+      down: payloadSize(result?.data),
+    });
+    return result;
   }
 
   /** Registers the directory in the server and remembers the project. */

@@ -11,6 +11,7 @@ import {
   mapSessionDirectory, rememberForeignSession, sameDirectory,
 } from './store.js';
 import { recordStep, detectLimit } from './ui/quota.js';
+import { noteAgentTraffic } from './ui/traffic.js';
 
 const MAX_ACTIVITY = 400;
 const DELEGATION_TOOL = /^(task|agent|subagent|dispatch|delegate)(?:[_-].*)?$/i;
@@ -347,6 +348,7 @@ export function handleEvent(event, deps = {}) {
         draft.streaming = false;
       });
       recordStep(sessionID, { ...data, assistantMessageID: messageID });
+      noteAgentTraffic(data);
       return;
     }
 

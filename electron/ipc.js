@@ -6,6 +6,7 @@ const setup = require('./setup');
 const ocConfig = require('./opencode-config');
 const terminal = require('./terminal');
 const git = require('./git');
+const traffic = require('./traffic');
 
 const METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 // Los adjuntos viajan como data URL base64 (×1,33): un mensaje con varias
@@ -315,6 +316,23 @@ function registerIpc({ backend, settings, getWindow, uiCheck }) {
     platform: process.platform,
     uiCheck: uiCheck,
   }));
+
+  // Tráfico de datos: el renderer solo puede leer, poner a cero y anotar la
+  // estimación del modelo (bytes). No hay forma de tocar el archivo.
+  ipcMain.handle('oc:traffic:get', async () => traffic.snapshot());
+  ipcMain.handle('oc:traffic:reset', async () => {
+    traffic.reset();
+    return traffic.snapshot();
+  });
+  ipcMain.handle('oc:traffic:agent', async (_event, payload = {}) => {
+    const bytes = (value) => {
+      const number = Number(value);
+      if (!Number.isFinite(number) || number < 0) return 0;
+      return Math.min(Math.round(number), 1024 * 1024 * 1024);
+    };
+    traffic.noteAgent({ up: bytes(payload.up), down: bytes(payload.down) });
+    return { ok: true };
+  });
 
   ipcMain.on('renderer-ready', (_event, options) => {
     if (options?.uiCheck) {

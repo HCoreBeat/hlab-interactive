@@ -803,5 +803,22 @@
   "Quitar todas": "Remove all",
   "clic en imágenes para ampliar": "click images to enlarge",
   "a subir": "to upload",
-  "Se añadirán al contexto del siguiente mensaje": "They will be added to the next message context"
+  "Se añadirán al contexto del siguiente mensaje": "They will be added to the next message context",
+  "Tráfico de datos": "Data traffic",
+  "Tráfico de datos de la app": "App data traffic",
+  "Origen": "Source",
+  "Bajada": "Download",
+  "Subida": "Upload",
+  "Internet (tu plan)": "Internet (your plan)",
+  "Modelo (estimado)": "Model (estimated)",
+  "App (API y eventos)": "App (API and events)",
+  "Local (no gasta plan)": "Local (no data plan)",
+  "Total": "Total",
+  "Por origen": "By source",
+  "Últimos días": "Last days",
+  "Hoy": "Today",
+  "Poner a cero": "Reset to zero",
+  "API de opencode": "opencode API",
+  "Eventos en vivo": "Live events",
+  "El modelo se estima con los tokens de cada respuesta (4 B por token). Lo que la app habla con opencode en tu equipo es local; el plan de datos solo paga el tráfico de Internet.": "The model is estimated from the tokens of each response (4 B per token). Traffic between the app and opencode on your machine is local; your data plan only pays for Internet traffic."
 }

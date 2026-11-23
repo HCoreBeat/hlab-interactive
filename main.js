@@ -160,6 +160,13 @@ if (!gotLock) {
 
   app.whenReady().then(async () => {
     settings = new SettingsStore(app.getPath('userData'));
+    const traffic = require('./electron/traffic');
+    traffic.init({ file: path.join(app.getPath('userData'), 'traffic.json') });
+    traffic.onChange((snapshot) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('oc:traffic:updated', snapshot);
+      }
+    });
     backend = new Backend(settings);
 
     registerIpc({ backend, settings, getWindow: () => mainWindow, uiCheck: UI_CHECK });
@@ -204,6 +211,7 @@ if (!gotLock) {
   app.on('before-quit', () => {
     const terminal = require('./electron/terminal');
     try { terminal.killAll(); } catch { /* ignore */ }
+    try { require('./electron/traffic').flush(); } catch { /* ignore */ }
     try { backend?.dispose(); } catch { /* ignore */ }
     try { settings?.flush(); } catch { /* ignore */ }
   });

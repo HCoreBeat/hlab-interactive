@@ -26,6 +26,8 @@ class SseClient extends EventEmitter {
     this.running = false;
     this.seen = new Set();
     this.seenOrder = [];
+    // Gancho opcional para contar los bytes que llegan por el flujo (tráfico).
+    this.onBytes = null;
   }
 
   configure({ baseUrl, password }) {
@@ -102,6 +104,7 @@ class SseClient extends EventEmitter {
       for (;;) {
         const { value, done } = await reader.read();
         if (done) break;
+        if (this.onBytes && value?.byteLength) this.onBytes(value.byteLength);
         buffer += decoder.decode(value, { stream: true });
         buffer = buffer.replace(/\r\n/g, '\n');
         let index = buffer.indexOf('\n\n');

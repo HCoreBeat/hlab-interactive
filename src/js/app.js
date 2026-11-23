@@ -27,6 +27,7 @@ import { showTab, applyPanelState, initPanelRouter, activePanelInstance, PANEL_K
 import { mountSplitters } from './ui/splitters.js';
 import { openSetupDialog, checkEnvironmentOnStart } from './ui/setup-dialog.js';
 import { mountQuota, openUsage, detectLimit } from './ui/quota.js';
+import { mountTraffic } from './ui/traffic.js';
 import { mountContextMeter, requestCompaction, maybeAutoCompact } from './ui/context-meter.js';
 import { openOpenCodeConfig, showCliOutput, openCliTerminal } from './ui/opencode-config.js';
 
@@ -858,6 +859,7 @@ async function boot() {
 
     mountTopbar(handlers);
     mountQuota();
+    mountTraffic();
     office = mountOfficePixelArt(handlers);
     window.__office = office;
     chat = mountChat(handlers);

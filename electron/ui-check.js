@@ -1535,6 +1535,60 @@ async function runUiCheck(win, { app, directory }) {
       && report.contextMeter.requested,
     );
 
+    // Marcador de tráfico: el paso anterior ya sumó la estimación del modelo y
+    // aquí se pide una respuesta al backend para que también cuente la API.
+    report.traffic = await win.webContents.executeJavaScript(`
+      (async () => {
+        const chip = document.getElementById('traffic-chip');
+        if (!chip) return { ok: false, reason: 'sin marcador de tráfico' };
+        await window.oc.request('GET', '/api/session', { query: { limit: 5 } }).catch(() => null);
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        const before = {
+          down: Number(chip.dataset.down || 0),
+          up: Number(chip.dataset.up || 0),
+          net: Number(chip.dataset.net || 0),
+          requests: Number(chip.dataset.requests || 0),
+          steps: Number(chip.dataset.steps || 0),
+          label: (chip.textContent || '').trim(),
+          title: chip.title || '',
+        };
+        chip.click();
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        return { ok: true, before, modalShown: Boolean(document.querySelector('.traffic-modal')) };
+      })()
+    `);
+    await capture(win, target, '20-trafico-datos.png');
+    report.traffic.reset = await win.webContents.executeJavaScript(`
+      (async () => {
+        const chip = document.getElementById('traffic-chip');
+        const modal = document.querySelector('.traffic-modal');
+        const rows = modal ? [...modal.querySelectorAll('.traffic-name')].map((node) => (node.textContent || '').trim()) : [];
+        const reset = modal ? [...modal.querySelectorAll('footer button')].find((button) => /cero/i.test(button.textContent || '')) : null;
+        reset?.click();
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const after = { down: Number(chip?.dataset.down || 0), up: Number(chip?.dataset.up || 0) };
+        modal?.querySelector('footer .btn-primary')?.click();
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        return { rows, hasReset: Boolean(reset), after, closed: !document.querySelector('.traffic-modal') };
+      })()
+    `);
+    const trafficBefore = report.traffic?.before || {};
+    report.trafficOk = Boolean(
+      report.traffic?.ok
+      && report.traffic.modalShown
+      && trafficBefore.down + trafficBefore.up > 0
+      && trafficBefore.net > 0
+      && trafficBefore.steps >= 1
+      && /↓/.test(trafficBefore.label)
+      && /Internet/.test(trafficBefore.title)
+      && /Internet \(tu plan\): ↓ (?!0 B)/.test(trafficBefore.title)
+      && (report.traffic.reset?.rows || []).includes('Internet (tu plan)')
+      && report.traffic.reset?.hasReset
+      && report.traffic.reset?.closed
+      && (report.traffic.reset?.after?.down || 0) + (report.traffic.reset?.after?.up || 0)
+        < trafficBefore.down + trafficBefore.up,
+    );
+
     report.speechEngine = await win.webContents.executeJavaScript(`
       (() => {
         const text = '# Título\\n\\nUse npm run dist y lea más.\\nSegunda frase.';

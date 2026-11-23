@@ -1,0 +1,107 @@
+/* ============================================================ tráfico de datos ==== */
+
+.topbar .traffic-chip {
+  cursor: pointer;
+  gap: 5px;
+  padding: 0 9px 0 8px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.traffic-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: background 200ms ease, box-shadow 200ms ease;
+}
+/* Cuando hay tráfico de Internet el punto se enciende: es el que paga el plan. */
+.topbar .traffic-chip.is-net { border-color: rgba(240, 180, 94, 0.5); color: var(--amber); }
+.topbar .traffic-chip.is-net .traffic-dot { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.topbar .traffic-chip.is-net .traffic-arrow { color: var(--amber); }
+.topbar .traffic-chip.is-idle { opacity: 0.7; }
+
+.traffic-pair { display: inline-flex; align-items: baseline; gap: 2px; }
+.traffic-arrow { color: var(--muted); font-size: 0.64rem; }
+.traffic-value { font-size: 0.68rem; }
+
+@media (max-width: 1120px) {
+  .topbar .traffic-chip { display: none; }
+}
+
+/* ------------------------------------------------------------- detalle ---- */
+
+.traffic-modal .modal-body { display: grid; gap: 12px; }
+.traffic-sheet { display: grid; gap: 10px; min-width: 0; }
+.traffic-lead { margin: 0; font-size: 0.95rem; }
+.traffic-sub,
+.traffic-note { margin: 0; line-height: 1.5; }
+
+.traffic-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 7px 18px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.traffic-head {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.traffic-name { font-size: 0.82rem; min-width: 0; }
+.traffic-name.is-child { padding-left: 14px; color: var(--text-dim); font-size: 0.78rem; }
+.traffic-name.is-net { font-weight: 700; }
+.traffic-name.is-local { color: var(--text-dim); }
+.traffic-name.is-total,
+.traffic-cell.is-total {
+  margin-top: 4px;
+  padding-top: 7px;
+  border-top: 1px solid var(--border);
+  font-weight: 700;
+}
+
+.traffic-cell {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 82px;
+  font-family: var(--mono, monospace);
+  font-size: 0.78rem;
+  text-align: right;
+}
+.traffic-cell-arrow { color: var(--muted); }
+.traffic-cell.is-net { color: var(--amber); }
+.traffic-cell.is-net .traffic-cell-arrow { color: var(--amber); }
+.traffic-cell.is-local { color: var(--text-dim); }
+
+.traffic-kinds { display: grid; gap: 4px; }
+.traffic-kinds-head {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-bottom: 2px;
+}
+.traffic-kind-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 0.76rem;
+}
+.traffic-kind-name {
+  font-family: var(--mono, monospace);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

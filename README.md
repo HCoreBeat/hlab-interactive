@@ -253,6 +253,14 @@ Dentro de la app:
   (tokens × 4 B) y un botón **Compactar**. El umbral de compactación automática se ajusta
   en Ajustes → «Datos y contexto» (por defecto 60 000 tokens, cooldown de 90 s) y también
   está en la paleta como `oc-compact`.
+- El **marcador de tráfico** de la barra superior (`↓ bajada · ↑ subida`) muestra los bytes
+  movidos hoy. El punto se enciende cuando hay tráfico de **Internet** (lo que paga el plan);
+  al hacer clic se abre el desglose con cuatro cubos: Internet (tu plan), Modelo (estimado
+  con los tokens × 4 B), App (API y eventos) y Local (`127.0.0.1`, no gasta plan), además del
+  detalle por origen y por día. Se puede poner a cero desde el propio diálogo. El contador
+  real vive en `electron/traffic.js` y se guarda en `traffic.json` del userData con agregados
+  de los últimos 14 días; el tráfico `app → opencode` en tu equipo es local y gratis, el
+  plan solo paga Internet.
 - Los adjuntos se reducen a 1280 px y ~600 KB por imagen (tope duro 1 MB, 3 MB de subida
   por mensaje); el texto va a 256 KB por archivo y 1 MB en conjunto. La bandeja enseña
   cuánto se va a subir en base64. El formato de envío aprendido se guarda: no se reenvía

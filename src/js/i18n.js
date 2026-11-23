@@ -19,6 +19,9 @@ let applying = false;
 // Guardamos el original para poder volver al español sin perder el texto.
 const originalTexts = new Map();
 const originalAttrs = new Map();
+// Última traducción aplicada por atributo: permite distinguir un cambio hecho
+// por la app (títulos con cifras en vivo) de uno hecho por el propio i18n.
+const translatedAttrs = new Map();
 const phraseCache = new Map();
 
 // Frases ordenadas por longitud: permite traducir textos compuestos («Sesiones
@@ -80,14 +83,16 @@ function translateAttributes(node) {
   for (const name of ['title', 'placeholder', 'aria-label', 'alt']) {
     const current = node.getAttribute(name);
     if (!current) continue;
-    let stored = originalAttrs.get(node);
-    if (!stored) {
-      stored = {};
-      originalAttrs.set(node, stored);
-    }
-    const value = stored[name] ?? current;
-    stored[name] = value;
-    const next = t(value);
+    if (!originalAttrs.has(node)) originalAttrs.set(node, {});
+    if (!translatedAttrs.has(node)) translatedAttrs.set(node, {});
+    const source = originalAttrs.get(node);
+    const applied = translatedAttrs.get(node);
+    // Si el valor ya no es el que dejó la traducción, lo cambió la app: el
+    // texto nuevo pasa a ser la fuente (p. ej. el título del marcador de
+    // tráfico, que se repinta con cada MB).
+    if (source[name] === undefined || current !== applied[name]) source[name] = current;
+    const next = t(source[name]);
+    applied[name] = next;
     if (next !== current) node.setAttribute(name, next);
   }
 }
@@ -111,6 +116,7 @@ function restoreOriginals() {
     for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, value);
   }
   originalAttrs.clear();
+  translatedAttrs.clear();
 }
 
 /** Traduce texto y atributos ya presentes en el documento. */
