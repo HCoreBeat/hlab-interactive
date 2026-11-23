@@ -20,6 +20,7 @@ import { el, clear } from '../util/dom.js';
 import { state, set, subscribe, sessionById, runtimeOf, questionsOf, activeSession } from '../store.js';
 import { api } from '../api.js';
 import { toast } from './toast.js';
+import { pickRequestID, questionFromForm, formAnswerBody } from '../question-model.js';
 
 const sessionPath = (sessionID, suffix = '') => `/api/session/${encodeURIComponent(sessionID)}${suffix}`;
 
@@ -30,22 +31,33 @@ function listFrom(response) {
   for (const candidate of [raw, raw?.data, raw?.items, raw?.questions, raw?.requests]) {
     if (Array.isArray(candidate)) return candidate;
   }
-  if (raw && typeof raw === 'object' && (raw.id || raw.requestID)) return [raw];
+  if (raw && typeof raw === 'object' && (
+    raw.id || raw.requestID || raw.requestId || raw.questionID || raw.questionId
+  )) return [raw];
   return [];
 }
 
 /** Unifica el formato de la pregunta venga del evento o de la lista. */
 function normalize(entry, fallbackSession = null) {
-  const id = entry.id || entry.requestID || entry.requestId || null;
-  const questions = entry.questions
+  const request = entry.request || entry.payload || entry;
+  const formItem = questionFromForm(entry, fallbackSession);
+  if (formItem) return formItem;
+  const ids = [
+    request.requestID, request.requestId, request.questionID, request.questionId, request.id,
+    entry.requestID, entry.requestId, entry.questionID, entry.questionId, entry.id,
+  ];
+  const id = pickRequestID(ids, 'que');
+  const questions = request.questions
+    || entry.questions
     || entry.payload?.questions
-    || (entry.question ? [{ question: entry.question, options: entry.options || [] }] : []);
+    || (request.question ? [{ question: request.question, options: request.options || [] }] : []);
   return {
+    ...request,
     ...entry,
     id,
-    sessionID: entry.sessionID || entry.sessionId || fallbackSession,
+    sessionID: request.sessionID || request.sessionId || entry.sessionID || entry.sessionId || fallbackSession,
     questions: Array.isArray(questions) ? questions : [],
-    tool: entry.tool || 'question',
+    tool: request.tool || entry.tool || 'question',
     synthetic: false,
   };
 }
@@ -72,16 +84,20 @@ export function mountQuestions() {
 
   /** Preguntas pendientes en el servidor (aunque el evento se haya perdido). */
   async function fetchPending(sessionID) {
+    // 2.3.x publica formularios; 2.2.x publica preguntas. Se prueba primero lo
+    // nuevo y se sigue buscando si la lista no contiene ninguna pregunta real.
     const paths = [];
-    if (sessionID) paths.push(sessionPath(sessionID, '/question'));
-    paths.push('/api/question/request');
+    if (sessionID) paths.push(sessionPath(sessionID, '/form'), sessionPath(sessionID, '/question'));
+    paths.push('/api/form', '/api/question/request');
     for (const path of paths) {
       // eslint-disable-next-line no-await-in-loop
       const list = listFrom(await api('GET', path));
       if (!list.length) continue;
-      return list
+      const items = list
         .map((entry) => normalize(entry, sessionID))
-        .filter((item) => Boolean(item.id));
+        .filter((item) => Boolean(item?.id));
+      if (!items.length) continue;
+      return items;
     }
     return [];
   }
@@ -109,6 +125,16 @@ export function mountQuestions() {
       body: {},
     });
     return legacy.ok ? legacy : primary;
+  }
+
+  /** opencode 2.3.x: responde el Form creado por la herramienta `question`. */
+  function postFormReply(sessionID, formID, answer) {
+    return api('POST', sessionPath(sessionID, `/form/${encodeURIComponent(formID)}/reply`), { body: answer });
+  }
+
+  /** opencode 2.3.x: cancelar un Form es un DELETE del recurso. */
+  function postFormCancel(sessionID, formID) {
+    return api('DELETE', sessionPath(sessionID, `/form/${encodeURIComponent(formID)}`));
   }
 
   function upsert(item) {
@@ -147,33 +173,45 @@ export function mountQuestions() {
     const body = Array.from({ length: count }, (_, index) => [...(answers[index] || [])]);
 
     let result;
-    if (asMessage) {
-      result = await sendAsMessage(item, body);
-    } else {
-      let target = item;
-      // la tarjeta sintética no tiene el requestID real: se busca en el servidor
-      if (target.synthetic || !target.id) {
-        const real = await findPending(target.sessionID);
-        if (real) { upsert(real); target = real; }
-      }
-      if (!target.id || target.synthetic) {
+    let target = item;
+    if (target.synthetic || !target.id) {
+      const real = await findPending(target.sessionID);
+      if (real) {
+        upsert(real);
+        target = real;
         busy.delete(item.id);
-        failed.set(item.id, 'El servidor aún no ha publicado el identificador de esta pregunta. Espera un instante (se reintenta solo) o envíala como mensaje normal.');
+        busy.add(target.id);
+        failed.delete(target.id);
         render();
-        return;
       }
+    }
+    if (!asMessage && (!target.id || target.synthetic)) {
+      busy.delete(item.id);
+      busy.delete(target.id);
+      failed.set(item.id, 'El servidor aún no ha publicado el identificador de esta pregunta. Espera un instante (se reintenta solo) o envíala como mensaje normal.');
+      render();
+      return;
+    }
+    if (asMessage) {
+      result = await sendAsMessage(target, body);
+    } else if (target.kind === 'form' || /^frm/i.test(String(target.id || ''))) {
+      result = await postFormReply(target.sessionID, target.formID || target.id, formAnswerBody(target, body));
+    } else {
       result = await postReply(target.sessionID, target.id, body);
     }
 
     busy.delete(item.id);
+    busy.delete(target.id);
     if (!result || !result.ok) {
       const status = result?.status ? ` (${result.status})` : '';
-      failed.set(item.id, `${result?.error || 'No se pudo enviar la respuesta.'}${status}`);
+      const key = target.id || item.id;
+      failed.set(key, `${result?.error || 'No se pudo enviar la respuesta.'}${status}`);
       toast(`Respuesta no enviada: ${result?.error || 'error del servidor'}`, 'error');
       render();
       return;
     }
-    remove(item.id);
+    remove(target.id);
+    if (target.id !== item.id) remove(item.id);
   }
 
   async function reject(item) {
@@ -182,14 +220,24 @@ export function mountQuestions() {
     let target = item;
     if (target.synthetic || !target.id) {
       const real = await findPending(target.sessionID);
-      if (real) { upsert(real); target = real; }
+      if (real) {
+        upsert(real);
+        target = real;
+        busy.delete(item.id);
+        busy.add(target.id);
+        render();
+      }
     }
     if (target.id && !target.synthetic) {
-      const result = await postReject(target.sessionID, target.id);
+      const result = (target.kind === 'form' || /^frm/i.test(String(target.id || '')))
+        ? await postFormCancel(target.sessionID, target.formID || target.id)
+        : await postReject(target.sessionID, target.id);
       if (!result?.ok) toast(`No se pudo omitir: ${result?.error || 'error del servidor'}`, 'error');
     }
     busy.delete(item.id);
-    remove(item.id);
+    busy.delete(target.id);
+    remove(target.id);
+    if (target.id !== item.id) remove(item.id);
     toast('Pregunta omitida.', 'warn', 2500);
   }
 

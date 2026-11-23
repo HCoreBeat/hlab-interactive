@@ -13,6 +13,18 @@ const workspaceFile = require('./workspace-file');
  */
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** Poll a renderer expression until it is truthy (or the deadline expires). */
+async function waitFor(win, expression, { timeout = 6000, interval = 200 } = {}) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    // eslint-disable-next-line no-await-in-loop
+    if (await win.webContents.executeJavaScript(`Boolean(${expression})`)) return true;
+    // eslint-disable-next-line no-await-in-loop
+    await sleep(interval);
+  }
+  return false;
+}
+
 async function capture(win, directory, name) {
   const image = await win.webContents.capturePage();
   const file = path.join(directory, name);
@@ -356,6 +368,7 @@ async function questionSnapshot(win) {
       const labels = card ? [...card.querySelectorAll('.q-option strong')].map((node) => node.textContent) : [];
       return {
         cards: document.querySelectorAll('.question-card').length,
+        id: card?.dataset.id || null,
         labels,
         text: card?.querySelector('.q-text')?.textContent || null,
         error: card?.querySelector('.chip.err')?.textContent || null,
@@ -728,7 +741,7 @@ async function runUiCheck(win, { app, directory }) {
         window.__ocTestEvent({
           id: 'evt_perm_' + a, created: Date.now(), type: 'permission.asked',
           location: { directory: dir },
-          data: { id: 'perm_a', sessionID: a, action: 'edit', metadata: {} },
+          data: { id: 'call_perm_a', requestID: 'per_a', sessionID: a, action: 'edit', metadata: {} },
         });
         window.__ocTestEvent({
           id: 'evt_user_' + a, created: Date.now(), type: 'session.inbox.enqueued',
@@ -738,6 +751,7 @@ async function runUiCheck(win, { app, directory }) {
         await wait(300);
         const inA = {
           permission: Boolean(document.querySelector('.permission-card')),
+          permissionId: window.__ocState().permissions.find((item) => item.sessionID === a)?.id || null,
           anchor: document.querySelector('.chat-anchor-text')?.textContent || '',
         };
         await window.__ocSelectSession(b);
@@ -769,6 +783,7 @@ async function runUiCheck(win, { app, directory }) {
         }
         return {
           ok: inA.permission && inA.anchor.includes('MENSAJE_SESION_A')
+            && inA.permissionId === 'per_a'
             && !inB.permission && inB.active === b && !inB.anchor.includes('MENSAJE_SESION_A')
             && inB.statePermission && backInA && childAgent === 'general',
           inA, inB, backInA, childAgent,
@@ -981,18 +996,165 @@ async function runUiCheck(win, { app, directory }) {
     await capture(win, target, '13-modelos.png');
     await win.webContents.executeJavaScript("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))");
 
-    // Herramienta `question`: la tarjeta debe aparecer, aceptar una opción y
-    // dejar que el turno continúe (el agente no se queda bloqueado).
-    report.questionPrompt = await sendPrompt(win, 'pregunta');
-    await sleep(3400);
-    await approve(win);
-    await sleep(3400);
+    // Pregunta controlada: esta comprobación valida el panel sin depender de
+    // que una prueba anterior haya dejado una sesión ocupada o esperando permiso.
+    report.questionToolFallback = await win.webContents.executeJavaScript(`
+      (() => {
+        const state = window.__ocState?.();
+        const sessionID = state?.activeSessionId;
+        if (!sessionID || typeof window.__ocTestEvent !== 'function') return false;
+        const assistantMessageID = 'msg_ui_check_question';
+        window.__ocTestEvent({
+          id: 'evt_ui_check_question_start',
+          created: Date.now(),
+          type: 'session.execution.started',
+          data: { sessionID },
+        });
+        window.__ocTestEvent({
+          id: 'evt_ui_check_question_tool_start',
+          created: Date.now(),
+          type: 'session.tool.input.started',
+          data: { sessionID, assistantMessageID, id: 'call_ui_check_question', name: 'question' },
+        });
+        window.__ocTestEvent({
+          id: 'evt_ui_check_question_tool_input',
+          created: Date.now(),
+          type: 'session.tool.input.ended',
+          data: {
+            sessionID,
+            assistantMessageID,
+            id: 'call_ui_check_question',
+            text: JSON.stringify({
+              questions: [{
+                header: 'Fallback',
+                question: 'Fallback de herramienta',
+                options: ['Continuar'],
+              }],
+            }),
+          },
+        });
+        window.__ocTestEvent({
+          id: 'evt_ui_check_question_tool_called',
+          created: Date.now(),
+          type: 'session.tool.called',
+          data: { sessionID, assistantMessageID, id: 'call_ui_check_question' },
+        });
+        return true;
+      })()
+    `);
+    await sleep(250);
+    report.questionToolFallbackCard = await questionSnapshot(win);
+    await win.webContents.executeJavaScript(`
+      (() => {
+        const state = window.__ocState?.();
+        const sessionID = state?.activeSessionId;
+        if (!sessionID || typeof window.__ocTestEvent !== 'function') return;
+        window.__ocTestEvent({
+          id: 'evt_ui_check_question_tool_done',
+          created: Date.now(),
+          type: 'question.rejected',
+          data: { sessionID, requestID: 'tool:call_ui_check_question' },
+        });
+        window.__ocTestEvent({
+          id: 'evt_ui_check_question_execution_done',
+          created: Date.now(),
+          type: 'session.execution.succeeded',
+          data: { sessionID },
+        });
+      })()
+    `);
+
+    report.questionEventInjected = await win.webContents.executeJavaScript(`
+      (() => {
+        const state = window.__ocState?.();
+        const sessionID = state?.activeSessionId;
+        if (!sessionID || typeof window.__ocTestEvent !== 'function') return false;
+        window.__ocTestEvent({
+          id: 'evt_ui_check_question',
+          created: Date.now(),
+          type: 'question.asked',
+          location: { directory: state.project.dir },
+          properties: {
+            id: 'call_ui_check_question',
+            requestID: 'que_ui_check_question',
+            sessionID,
+            tool: 'question',
+            questions: [{
+              header: 'Formato',
+              question: '¿Cómo quieres que continúe la demostración?',
+              options: [{ label: 'Seguir con la demo' }, { label: 'Parar aquí' }],
+              multiple: false,
+              custom: true,
+            }],
+          },
+        });
+        return true;
+      })()
+    `);
+    await sleep(250);
     report.questionAsked = await questionSnapshot(win);
+    report.questionEventIdOk = report.questionAsked.id === 'que_ui_check_question';
     await capture(win, target, '14-pregunta.png');
     report.questionAnswer = await answerQuestion(win);
     await sleep(1900);
     report.questionDone = await questionSnapshot(win);
     await capture(win, target, '15-pregunta-respondida.png');
+    // La pregunta se inyectó a mano: cerramos su turno para que la sesión no
+    // quede marcada como ocupada antes del siguiente escenario.
+    await win.webContents.executeJavaScript(`
+      (() => {
+        const sessionID = window.__ocState?.()?.activeSessionId;
+        if (!sessionID || typeof window.__ocTestEvent !== 'function') return;
+        window.__ocTestEvent({
+          id: 'evt_ui_check_question_settle', created: Date.now(),
+          type: 'session.execution.succeeded', data: { sessionID },
+        });
+      })()
+    `);
+
+    // Form API de opencode 2.3.x: la herramienta `question` crea un Form
+    // (id `frm_…`) en lugar de emitir `question.asked`. Debe aparecer la
+    // tarjeta, responderse por POST /form/{id}/reply y desaparecer.
+    // Primero retiramos los permisos colgantes de la prueba de aislamiento: si
+    // no, `approve` aprobaría ese permiso viejo en vez del del escenario.
+    await win.webContents.executeJavaScript(`
+      (() => {
+        const st = window.__ocState?.();
+        if (!st || typeof window.__ocTestEvent !== 'function') return;
+        for (const perm of st.permissions) {
+          window.__ocTestEvent({
+            id: 'evt_form_cleanup_' + perm.id, created: Date.now(),
+            type: 'permission.replied',
+            data: { sessionID: perm.sessionID, requestID: perm.id, reply: 'once' },
+          });
+        }
+      })()
+    `);
+    // El escenario demo pide permiso para editar antes de llegar a la pregunta,
+    // así que hay que aprobarlo y esperar al `form.created` (sondeamos en vez
+    // de confiar en un sleep fijo para no depender del estado del turno anterior).
+    report.formPrompt = await sendPrompt(win, 'formulario');
+    report.formPermissionShown = await waitFor(
+      win, "document.querySelectorAll('.permission-card').length > 0", { timeout: 6000 },
+    );
+    await approve(win);
+    report.formCreated = await waitFor(
+      win, "document.querySelectorAll('.question-card').length > 0", { timeout: 8000 },
+    );
+    report.formAsked = await questionSnapshot(win);
+    report.formEventIdOk = /^frm_/.test(report.formAsked.id || '');
+    await capture(win, target, '15b-formulario.png');
+    report.formAnswer = await answerQuestion(win);
+    await sleep(1200);
+    report.formDone = await questionSnapshot(win);
+    report.formFlowOk = Boolean(
+      report.formPrompt
+      && report.formEventIdOk
+      && report.formAnswer?.picked
+      && report.formAnswer?.sent
+      && report.formDone?.cards === 0,
+    );
+    await capture(win, target, '15c-formulario-respondido.png');
 
     // Proyectos en paralelo: un turno de OTRA carpeta debe seguir vivo, marcarse
     // en la UI y no colarse en la lista del proyecto que estamos viendo.

@@ -20,6 +20,14 @@ export function mountPermissions() {
     failed.delete(permission.id);
     render();
 
+    if (!/^per/i.test(String(permission.id || ''))) {
+      busy.delete(permission.id);
+      failed.set(permission.id, 'El servidor no proporcionó un identificador de permiso válido.');
+      toast('Permiso no enviado: identificador no válido.', 'error');
+      render();
+      return;
+    }
+
     const path = `/api/session/${encodeURIComponent(permission.sessionID)}/permission/${encodeURIComponent(permission.id)}/reply`;
     const result = await window.oc.request('POST', path, { body: { decision } });
     busy.delete(permission.id);

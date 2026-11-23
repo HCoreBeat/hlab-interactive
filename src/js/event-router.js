@@ -12,6 +12,7 @@ import {
 } from './store.js';
 import { recordStep, detectLimit } from './ui/quota.js';
 import { noteAgentTraffic } from './ui/traffic.js';
+import { pickRequestID, questionFromForm } from './question-model.js';
 
 const MAX_ACTIVITY = 400;
 const DELEGATION_TOOL = /^(task|agent|subagent|dispatch|delegate)(?:[_-].*)?$/i;
@@ -53,6 +54,30 @@ function textFromContent(content) {
     return content.map((part) => (part?.type === 'text' ? part.text : '')).filter(Boolean).join('\n');
   }
   return '';
+}
+
+function objectInput(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+  if (typeof value !== 'string') return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function requestIDOf(data, prefix, aliases = []) {
+  const records = [data?.request, data?.permission, data?.payload, data?.question, data].filter(
+    (value) => value && typeof value === 'object' && !Array.isArray(value),
+  );
+  const candidates = [];
+  for (const record of records) {
+    candidates.push(record.requestID, record.requestId);
+    for (const alias of aliases) candidates.push(record[alias]);
+    candidates.push(record.id);
+  }
+  return pickRequestID(candidates, prefix);
 }
 
 export function normalizeHistory(items) {
@@ -431,6 +456,8 @@ export function handleEvent(event, deps = {}) {
 
     case 'session.tool.input.ended': {
       const messageID = data.assistantMessageID || currentAssistantID(sessionID);
+      const input = objectInput(data.text);
+      if (input) patchRuntime(sessionID, { toolInput: input });
       if (!messageID) return;
       mutateMessage(sessionID, messageID, (draft) => {
         const index = ensureBlock(draft, `tool:${data.id}`, () => ({
@@ -446,6 +473,30 @@ export function handleEvent(event, deps = {}) {
     }
 
     case 'session.tool.called': {
+      const runtime = state.runtime[sessionID] || {};
+      const tool = data.name || data.tool || runtime.tool;
+      const input = objectInput(data.input) || objectInput(runtime.toolInput) || objectInput(data.text);
+      if (tool) {
+        patchRuntime(sessionID, {
+          tool,
+          toolInput: input || data.input || null,
+          ...(/^question$/i.test(String(tool)) ? { busy: true } : {}),
+        });
+      }
+      if (/^question$/i.test(String(tool || '')) && Array.isArray(input?.questions)) {
+        const callID = data.id || data.callID || String(Date.now());
+        if (!(state.questions || []).some((entry) => entry.sessionID === sessionID && entry.id !== `tool:${callID}`)) {
+          set({
+            questions: [...(state.questions || []), {
+              id: `tool:${callID}`,
+              sessionID,
+              questions: input.questions,
+              synthetic: true,
+            }],
+            permissions: [...state.permissions],
+          });
+        }
+      }
       const messageID = data.assistantMessageID || currentAssistantID(sessionID);
       if (!messageID) return;
       mutateMessage(sessionID, messageID, (draft) => {
@@ -467,18 +518,6 @@ export function handleEvent(event, deps = {}) {
       patchRuntime(sessionID, { toolInput: data.input || null });
       // la tarea ya está en marcha: el subagente está a punto de existir (o ya existe)
       if (DELEGATION_TOOL.test(String(state.runtime[sessionID]?.tool || ''))) deps.onSubagentSpawn?.(sessionID);
-      // red de seguridad: si el servidor no emitió `question.asked`, se muestra la pregunta a partir de la herramienta
-      if (/^question$/i.test(String(state.runtime[sessionID]?.tool || '')) && Array.isArray(data.input?.questions)) {
-        const callID = data.id || data.callID || String(Date.now());
-        setTimeout(() => {
-          if ((state.questions || []).some((entry) => entry.sessionID === sessionID)) return;
-          if (state.runtime[sessionID]?.tool !== 'question') return;
-          set({
-            questions: [...(state.questions || []), { id: `tool:${callID}`, sessionID, questions: data.input.questions, synthetic: true }],
-            permissions: [...state.permissions],
-          });
-        }, 1500);
-      }
       return;
     }
 
@@ -527,18 +566,21 @@ export function handleEvent(event, deps = {}) {
     case 'question.v2.asked':
     case 'session.question.asked': {
       // preguntas del agente (herramienta `question`): hay que responderlas desde la app
-      const questions = data.questions || data.input?.questions
+      const request = data.request || data.payload || data;
+      const questions = request.questions || data.questions || data.input?.questions
+        || (request.question ? [{ question: request.question, options: request.options || [] }] : [])
         || (data.question ? [{ question: data.question, options: data.options || [] }] : []);
-      const requestID = data.id || data.requestID || data.requestId || null;
+      const requestID = requestIDOf(data, 'que', ['questionID', 'questionId']);
       // sin identificador real la pregunta no se puede responder: la tarjeta
       // sintética de `session.tool.called` (o el sondeo de questions.js) la resuelve.
       if (!requestID || !Array.isArray(questions) || questions.length === 0) return;
       const item = {
         ...data,
+        ...request,
         id: requestID,
-        sessionID: data.sessionID || sessionID,
+        sessionID: request.sessionID || request.sessionId || data.sessionID || sessionID,
         questions,
-        tool: data.tool || 'question',
+        tool: request.tool || data.tool || 'question',
       };
       set({
         // la pregunta real sustituye a cualquier tarjeta sintética de la sesión
@@ -571,8 +613,52 @@ export function handleEvent(event, deps = {}) {
       return;
     }
 
+    // opencode 2.3.x: la herramienta `question` crea un Form con
+    // metadata.kind === 'question'. El id es `frm_…` y no llega un evento
+    // `question.asked`, así que sin este caso la tarjeta nunca aparece.
+    case 'form.created': {
+      const item = questionFromForm(data.form || data.request || data, sessionID);
+      if (!item || !item.sessionID) return;
+      set({
+        questions: [
+          ...(state.questions || []).filter((entry) => (
+            entry.id !== item.id && !(entry.synthetic && entry.sessionID === item.sessionID)
+          )),
+          item,
+        ],
+        permissions: [...state.permissions],
+      });
+      return;
+    }
+
+    case 'form.replied':
+    case 'form.cancelled': {
+      const formID = data.id || data.formID || data.requestID || null;
+      const sid = data.sessionID || sessionID;
+      set({
+        questions: (state.questions || []).filter((entry) => (
+          !((entry.id === formID || entry.formID === formID)
+            && (!sid || entry.sessionID === sid))
+          && !(entry.synthetic && sid && entry.sessionID === sid)
+        )),
+        permissions: [...state.permissions],
+      });
+      return;
+    }
+
     case 'permission.asked': {
-      const permission = { ...data, sessionID: data.sessionID || sessionID };
+      const request = data.permission || data.request || data.payload || data;
+      const requestID = requestIDOf(data, 'per', ['permissionID', 'permissionId']);
+      const sessionIDForPermission = request.sessionID || request.sessionId || data.sessionID || sessionID;
+      const fallbackID = request.id || data.id
+        || `missing-permission-id:${sessionIDForPermission || 'unknown'}:${event.id || Date.now()}`;
+      const permission = {
+        ...data,
+        ...request,
+        id: String(requestID || fallbackID),
+        requestID: requestID || request.requestID || data.requestID,
+        sessionID: sessionIDForPermission,
+      };
       set({ permissions: [...state.permissions.filter((item) => item.id !== permission.id), permission] });
       for (const file of permission.metadata?.files || []) {
         upsertChangedFile({ ...file, sessionID: permission.sessionID });

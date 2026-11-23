@@ -81,6 +81,8 @@ class DemoSource {
     this.pendingReplies = new Map();
     this.questions = new Map();
     this.pendingQuestions = new Map();
+    this.forms = new Map();
+    this.pendingForms = new Map();
     this.shells = new Map();
     this.active = null;
     this.started = false;
@@ -216,6 +218,24 @@ class DemoSource {
         this.replyQuestion(sessionID, requestID, action === 'reply' ? (body?.answers || []) : null);
         return this.ok(null, 204);
       }
+      // Form API de opencode 2.3.x (la herramienta `question` crea un Form).
+      if (rest === '/form' && method === 'GET') {
+        const data = [...this.forms.values()].filter((item) => item.sessionID === sessionID);
+        return this.ok({ data });
+      }
+      const formReply = /^\/form\/([^/]+)\/reply$/.exec(rest);
+      if (formReply && method === 'POST') {
+        const [, formID] = formReply;
+        if (!this.forms.has(formID)) return this.fail(404, 'FormNotFoundError', 'El formulario no existe.');
+        this.replyForm(sessionID, formID, body?.answer || {}, false);
+        return this.ok(null, 204);
+      }
+      const formCancel = /^\/form\/([^/]+)$/.exec(rest);
+      if (formCancel && method === 'DELETE') {
+        const [, formID] = formCancel;
+        this.replyForm(sessionID, formID, null, true);
+        return this.ok(null, 204);
+      }
       if (rest.startsWith('/diff')) {
         return this.ok({ data: [] });
       }
@@ -225,6 +245,9 @@ class DemoSource {
     }
     if (path === '/api/question/request') {
       return this.ok({ location: { directory: DIRECTORY }, data: [...this.questions.values()] });
+    }
+    if (path === '/api/form') {
+      return this.ok({ location: { directory: DIRECTORY }, data: [...this.forms.values()] });
     }
     if (path === '/api/model') return this.ok({ location: { directory: DIRECTORY }, data: MODELS });
     if (path === '/api/provider') return this.ok({ location: { directory: DIRECTORY }, data: [{ id: 'opencode', name: 'OpenCode' }] });
@@ -411,7 +434,75 @@ class DemoSource {
     return answers;
   }
 
+  /** Cierra un Form pendiente y despierta al escenario que esperaba la respuesta. */
+  replyForm(sessionID, formID, answer, cancelled) {
+    if (!this.forms.has(formID)) return false;
+    this.forms.delete(formID);
+    this.event(
+      cancelled ? 'form.cancelled' : 'form.replied',
+      cancelled ? { id: formID, sessionID } : { id: formID, sessionID, answer },
+    );
+    const resolver = this.pendingForms.get(formID);
+    if (resolver) {
+      this.pendingForms.delete(formID);
+      resolver(answer);
+    }
+    return true;
+  }
+
+  /** Pregunta del agente usando el Form API de opencode 2.3.x. */
+  async askFormQuestion(sessionID, assistantMessageID, spec) {
+    const callID = nextId('call');
+    this.event('session.tool.input.started', { sessionID, assistantMessageID, id: callID, name: 'question' });
+    await sleep(180);
+    this.event('session.tool.input.ended', {
+      sessionID,
+      assistantMessageID,
+      id: callID,
+      text: JSON.stringify({ questions: spec }),
+    });
+    this.event('session.tool.called', {
+      sessionID, assistantMessageID, id: callID, input: { questions: spec }, executed: false,
+    });
+    const formID = nextId('frm');
+    const fields = spec.map((question, index) => ({
+      key: `q${index}`,
+      title: question.header,
+      description: question.question,
+      type: question.multiple ? 'multiselect' : 'string',
+      options: (question.options || []).map((option) => {
+        const label = typeof option === 'string' ? option : option.label;
+        return { value: label, label, description: typeof option === 'string' ? '' : (option.description || '') };
+      }),
+      custom: question.custom !== false,
+    }));
+    const form = {
+      id: formID,
+      sessionID,
+      title: 'Questions',
+      metadata: { kind: 'question', tool: { messageID: assistantMessageID, id: callID } },
+      fields,
+    };
+    this.forms.set(formID, form);
+    this.event('form.created', { form });
+    const answer = await new Promise((resolve) => this.pendingForms.set(formID, resolve));
+    this.event('session.tool.success', {
+      sessionID,
+      assistantMessageID,
+      id: callID,
+      content: [{ type: 'text', text: answer ? fields.map((field) => {
+        const value = answer[field.key];
+        return Array.isArray(value) ? value.join(', ') : String(value ?? '');
+      }).join(', ') : '(omitida)' }],
+    });
+    return answer;
+  }
+
   interrupt(sessionID) {
+    for (const formID of [...this.pendingForms.keys()]) {
+      const form = this.forms.get(formID);
+      if (form) this.replyForm(form.sessionID, formID, null, true);
+    }
     this.event('session.execution.interrupted', { sessionID });
     const session = this.sessions.get(sessionID);
     if (session) session.outcome = 'interrupted';
@@ -576,6 +667,19 @@ class DemoSource {
       }]);
       if (run.cancelled) return;
       emitText(`\n\nRespuesta recibida: **${answers ? answers.flat().join(', ') : 'omitida'}**.\n`);
+    }
+
+    // Form API de 2.3.x: misma pregunta, pero emitida como `form.created`.
+    if (!run.cancelled && /formulario|form question/i.test(text)) {
+      const answer = await this.askFormQuestion(sessionID, msgID, [{
+        header: 'API',
+        question: '¿El formulario funciona?',
+        options: [{ label: 'Sí, funciona', description: 'Respuesta por /form/{id}/reply' }],
+        multiple: false,
+        custom: true,
+      }]);
+      if (run.cancelled) return;
+      emitText(`\n\nRespuesta recibida: **${answer ? String(answer.q0 ?? 'omitida') : 'omitida'}**.\n`);
     }
 
     if (run.cancelled) return;
