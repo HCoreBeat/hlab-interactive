@@ -112,9 +112,11 @@ Antes de subir cambios, comprueba que `.gitignore` excluye `node_modules/`, `dis
   hubiera otro proyecto recordado. Si la app ya está abierta, cambia al workspace del `.hl`
   sin detener los turnos en curso.
 - **Chat**: streaming token a token, razonamiento plegable, tarjetas de herramientas con
-  entrada/salida, Markdown seguro y bloques de código con botón de copiar. Las tarjetas de
-  herramienta son **explícitas**: se ve el **diff** de lo que se edita, el **comando** que se
-  ejecuta **con su salida completa**, el **contenido** que se escribe y el archivo que se lee
+  entrada/salida, Markdown seguro y bloques de código con botón de copiar. El menú contextual
+  con clic derecho copia la selección, el mensaje, su Markdown o el bloque de código. Las
+  tarjetas de herramienta son **explícitas**: se ve el **diff** de lo que se edita,
+  el **comando** que se ejecuta **con su salida completa**, el **contenido** que se
+  escribe y el archivo que se lee
   (con un botón para abrirlo). Cada mensaje indica el **agente y el modelo** que lo han
   generado. Si un turno falla (por ejemplo, **límite de uso del modelo**: «Rate limit
   exceeded»), el chat lo dice con un aviso y un botón **Reintentar**, y el agente aparece en

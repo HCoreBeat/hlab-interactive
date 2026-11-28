@@ -134,6 +134,94 @@ async function closePalette(win) {
   `);
 }
 
+async function checkPaletteInteractions(win) {
+  return win.webContents.executeJavaScript(`
+    (() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', ctrlKey: true, bubbles: true }));
+      const item = [...document.querySelectorAll('.command-item')]
+        .find((node) => node.querySelector('.command-name')?.textContent === 'Enfocar chat');
+      if (!item) return { ok: false, reason: 'command item not found' };
+      item.dispatchEvent(new MouseEvent('mouseenter'));
+      const hoverPreservedItem = item.isConnected;
+      item.click();
+      const clickExecuted = !document.querySelector('.command-palette')
+        && document.activeElement?.id === 'prompt-input';
+
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', ctrlKey: true, bubbles: true }));
+      const closeButton = document.querySelector('.command-palette [aria-label="Cerrar panel de comandos"]');
+      closeButton?.click();
+      const closeButtonWorks = !document.querySelector('.command-palette');
+      return {
+        ok: hoverPreservedItem && clickExecuted && closeButtonWorks,
+        hoverPreservedItem,
+        clickExecuted,
+        closeButtonWorks,
+      };
+    })()
+  `);
+}
+
+async function checkChatContextMenu(win) {
+  return win.webContents.executeJavaScript(`
+    (async () => {
+      const message = [...document.querySelectorAll('.msg-user')]
+        .reverse()
+        .find((node) => node.querySelector('.bubble'));
+      const clipboard = navigator.clipboard;
+      if (!message || !clipboard) return { ok: false, reason: 'message or clipboard unavailable' };
+
+      const descriptor = Object.getOwnPropertyDescriptor(clipboard, 'writeText');
+      let copiedText = '';
+      try {
+        Object.defineProperty(clipboard, 'writeText', {
+          configurable: true,
+          value: async (value) => { copiedText = String(value); },
+        });
+
+        const bubble = message.querySelector('.bubble');
+        const showMenu = () => message.dispatchEvent(new MouseEvent('contextmenu', {
+          bubbles: true,
+          cancelable: true,
+          clientX: 24,
+          clientY: 24,
+        }));
+        showMenu();
+        const menu = document.querySelector('.chat-context-menu');
+        const messageItem = menu?.querySelector('[data-action="copy-message"]');
+        const menuOpens = Boolean(menu && !menu.hidden && messageItem);
+        messageItem?.click();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        const messageCopied = copiedText.trim() === bubble.innerText.trim();
+
+        const range = document.createRange();
+        range.selectNodeContents(bubble);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        const expectedSelection = selection.toString();
+        showMenu();
+        const selectionItem = menu?.querySelector('[data-action="copy-selection"]');
+        const selectionOptionShown = Boolean(selectionItem);
+        selectionItem?.click();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        const selectionCopied = copiedText === expectedSelection;
+        selection.removeAllRanges();
+
+        return {
+          ok: menuOpens && messageCopied && selectionOptionShown && selectionCopied,
+          menuOpens,
+          messageCopied,
+          selectionOptionShown,
+          selectionCopied,
+        };
+      } finally {
+        if (descriptor) Object.defineProperty(clipboard, 'writeText', descriptor);
+        else delete clipboard.writeText;
+      }
+    })()
+  `);
+}
+
 async function summary(win) {
   return win.webContents.executeJavaScript(`
     (() => {
@@ -388,6 +476,18 @@ async function runUiCheck(win, { app, directory }) {
     report.startupProject = await win.webContents.executeJavaScript(
       "window.__ocState?.()?.project?.dir || null",
     );
+    report.emptyWorkspace = await win.webContents.executeJavaScript(`
+      (() => ({
+        welcomeVisible: Boolean(document.querySelector('.welcome')),
+        chatEmpty: Boolean(document.querySelector('.chat-empty')),
+        activeSession: window.__ocState?.()?.activeSessionId || null,
+      }))()
+    `);
+    if (!report.startupProject && (!report.emptyWorkspace.welcomeVisible || !report.emptyWorkspace.chatEmpty)) {
+      throw new Error('La interfaz no mostró el estado inicial sin proyecto.');
+    }
+    report.commandPalette = await checkPaletteInteractions(win);
+    if (!report.commandPalette.ok) throw new Error('Falló la interacción por clic del panel de comandos.');
     if (report.workspaceArg) {
       const normalize = (value) => String(value || '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
       report.workspaceOpened = normalize(report.startupProject) === normalize(report.workspaceArg.dir);
@@ -628,6 +728,8 @@ async function runUiCheck(win, { app, directory }) {
     report.permissionCards = await win.webContents.executeJavaScript(
       "document.querySelectorAll('.permission-card').length",
     );
+    report.chatContextMenu = await checkChatContextMenu(win);
+    if (!report.chatContextMenu.ok) throw new Error('Falló la copia desde el menú contextual del chat.');
 
     // Esc en primera persona no debe llegar al atajo global que aborta el turno.
     report.fpTurnEntered = await enterFirstPerson(win);

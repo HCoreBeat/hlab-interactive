@@ -14,6 +14,7 @@ import {
   mountAttachments, openLightbox, stageAttachments, imagesOfMessage, attachmentsOfMessage,
 } from './attachments.js';
 import { mountChatSearch } from './chat-search.js';
+import { pushEscape } from './escape-stack.js';
 
 const INTERNAL_COMMANDS = [
   { name: 'nueva', description: 'Crear una sesión nueva' },
@@ -146,6 +147,29 @@ function renderMessage(message, options = {}) {
   ]);
 }
 
+function messageMarkdown(message) {
+  if (message.type === 'assistant') {
+    return (message.blocks || [])
+      .filter((block) => block.kind === 'text')
+      .map((block) => block.text || '')
+      .join('\n\n')
+      .trim();
+  }
+  return String(message.text || message.payload?.text || '').trim();
+}
+
+function visibleMessageText(node) {
+  return [...node.querySelectorAll('.msg-user .bubble, .msg-system .bubble, .block-text')]
+    .map((block) => {
+      const copy = block.cloneNode(true);
+      copy.querySelectorAll('.code-head, .md-think').forEach((item) => item.remove());
+      return copy.innerText || copy.textContent || '';
+    })
+    .filter((text) => text.trim())
+    .join('\n\n')
+    .trim();
+}
+
 export function mountChat(handlers) {
   const scroll = document.getElementById('chat-scroll');
   const input = document.getElementById('prompt-input');
@@ -177,6 +201,117 @@ export function mountChat(handlers) {
   let acItems = [];
   let speakingMessageId = null;
   let speechController = null;
+  const contextMenu = el('div', {
+    class: 'chat-context-menu',
+    role: 'menu',
+    'aria-label': 'Opciones del mensaje',
+    hidden: true,
+  });
+  document.body.appendChild(contextMenu);
+  let contextMenuReturnFocus = null;
+  let unregisterContextMenuEscape = null;
+
+  function closeMessageContextMenu(restoreFocus = false) {
+    if (contextMenu.hidden) return false;
+    contextMenu.hidden = true;
+    unregisterContextMenuEscape?.();
+    unregisterContextMenuEscape = null;
+    if (restoreFocus && contextMenuReturnFocus?.isConnected) contextMenuReturnFocus.focus();
+    contextMenuReturnFocus = null;
+    return true;
+  }
+
+  async function copyFromContextMenu(text, successMessage) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(successMessage, 'ok', 1800);
+    } catch {
+      toast('No se pudo copiar al portapapeles.', 'warn');
+    } finally {
+      closeMessageContextMenu(true);
+    }
+  }
+
+  function addContextMenuItem(action, label, text, successMessage) {
+    contextMenu.appendChild(el('button', {
+      class: 'chat-context-item',
+      type: 'button',
+      role: 'menuitem',
+      text: label,
+      'data-action': action,
+      onClick: () => { void copyFromContextMenu(text, successMessage); },
+    }));
+  }
+
+  function openMessageContextMenu(event) {
+    closeMessageContextMenu();
+    const target = event.target instanceof Element ? event.target : null;
+    const messageNode = target?.closest('.msg[data-id]');
+    if (!messageNode || !scroll.contains(messageNode)) return;
+    const message = rendered.get(messageNode.dataset.id)?.ref;
+    if (!message) return;
+
+    const markdown = messageMarkdown(message);
+    const visibleText = visibleMessageText(messageNode);
+    const selection = window.getSelection();
+    const selectedText = selection?.toString() || '';
+    const selectionIsInMessage = Boolean(
+      selectedText.trim()
+      && selection?.anchorNode
+      && selection?.focusNode
+      && messageNode.contains(selection.anchorNode)
+      && messageNode.contains(selection.focusNode),
+    );
+    const code = target.closest('.code-block')?.querySelector('code')?.textContent || '';
+    if (!visibleText && !markdown && !selectionIsInMessage && !code.trim()) return;
+
+    event.preventDefault();
+    clear(contextMenu);
+    if (selectionIsInMessage) {
+      addContextMenuItem('copy-selection', 'Copiar selección', selectedText, 'Selección copiada al portapapeles.');
+    }
+    const hasMarkdown = markdown && markdown !== visibleText;
+    const hasCode = Boolean(code.trim());
+    if (selectionIsInMessage && (visibleText || hasMarkdown || hasCode)) {
+      contextMenu.appendChild(el('div', { class: 'chat-context-separator', role: 'separator' }));
+    }
+    if (visibleText) {
+      addContextMenuItem('copy-message', 'Copiar texto del mensaje', visibleText, 'Texto del mensaje copiado al portapapeles.');
+    }
+    if (hasMarkdown) {
+      addContextMenuItem('copy-markdown', 'Copiar mensaje como Markdown', markdown, 'Mensaje copiado como Markdown.');
+    }
+    if (hasCode) {
+      if (visibleText || hasMarkdown) contextMenu.appendChild(el('div', { class: 'chat-context-separator', role: 'separator' }));
+      addContextMenuItem('copy-code', 'Copiar bloque de código', code, 'Código copiado al portapapeles.');
+    }
+
+    contextMenuReturnFocus = document.activeElement;
+    contextMenu.hidden = false;
+    const bounds = contextMenu.getBoundingClientRect();
+    contextMenu.style.left = `${Math.max(8, Math.min(event.clientX, window.innerWidth - bounds.width - 8))}px`;
+    contextMenu.style.top = `${Math.max(8, Math.min(event.clientY, window.innerHeight - bounds.height - 8))}px`;
+    unregisterContextMenuEscape = pushEscape(() => closeMessageContextMenu(true));
+    contextMenu.querySelector('button')?.focus();
+  }
+
+  contextMenu.addEventListener('keydown', (event) => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const items = [...contextMenu.querySelectorAll('button:not(:disabled)')];
+    if (items.length === 0) return;
+    const current = items.indexOf(document.activeElement);
+    const next = event.key === 'Home' ? 0
+      : event.key === 'End' ? items.length - 1
+        : (current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+    event.preventDefault();
+    items[next].focus();
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (!contextMenu.hidden && !contextMenu.contains(event.target)) closeMessageContextMenu();
+  });
+  document.addEventListener('contextmenu', openMessageContextMenu);
+  window.addEventListener('resize', () => closeMessageContextMenu());
+  window.addEventListener('blur', () => closeMessageContextMenu());
 
   // "Abrir archivo" from a tool card jumps to the Archivos panel.
   const toolOptions = {
@@ -363,6 +498,7 @@ export function mountChat(handlers) {
     renderLiveStatus(session);
 
     if (!session) {
+      closeMessageContextMenu();
       stopSpeech();
       clear(scroll);
       rendered = new Map();
@@ -393,6 +529,7 @@ export function mountChat(handlers) {
     const visible = messages.filter((message) => message.type !== 'idle');
 
     if (sessionID !== renderedSession) {
+      closeMessageContextMenu();
       stopSpeech();
       clear(scroll);
       rendered = new Map();
@@ -610,6 +747,7 @@ export function mountChat(handlers) {
   }
 
   scroll.addEventListener('scroll', () => {
+    closeMessageContextMenu();
     autoScroll = isAtBottom(scroll);
     jumpButton.hidden = autoScroll;
   });
@@ -671,7 +809,8 @@ export function mountChat(handlers) {
     items.forEach((item, index) => {
       autocomplete.appendChild(el('div', {
         class: `ac-item ${index === acSelection ? 'is-selected' : ''}`,
-        onMouseDown: (event) => { event.preventDefault(); pickAutocomplete(item); },
+        onMouseDown: (event) => event.preventDefault(),
+        onClick: () => { void runAutocomplete(item); },
       }, [
         el('span', { class: 'ac-name', text: `/${item.name}` }),
         el('span', { class: 'ac-desc', text: item.description }),
@@ -687,6 +826,15 @@ export function mountChat(handlers) {
     resizeInput();
     hideAutocomplete();
     updateHint();
+  }
+
+  async function runAutocomplete(item) {
+    if (!item) return;
+    input.value = `/${item.name}`;
+    resizeInput();
+    hideAutocomplete();
+    updateHint();
+    await submit();
   }
 
   function handleAutocompleteKey(event) {

@@ -388,7 +388,9 @@ mostrando los archivos tocados por el agente.
 - `GET /api/agent?location[...]` → `{location, data:[{id, name, description, mode: "primary"|"subagent"|"all", hidden, model, permissions, ...}]}`.
   En una instalación limpia: `build` (mode `primary`) y `plan`.
 - `GET /api/model?location[...]` → `{location, data:[{id, modelID, providerID, name, variants[], cost[], status, enabled, limit:{context,input,output}}]}`.
-  En esta máquina, 10 modelos del proveedor `opencode` (`big-pickle`, `deepseek-v4.1-flash-free`, …).
+  La primera instantánea puede llegar antes de que terminen de inicializarse los plugins/proveedores;
+  si `data` está vacío al arrancar, vuelve a consultar el catálogo. En esta máquina, 10 modelos del
+  proveedor `opencode` (`big-pickle`, `deepseek-v4.1-flash-free`, …).
 - `GET /api/provider?location[...]` → `{location, data:[{id, name, ...}]}`.
 - `GET /api/command?location[...]` → `{location, data:[{name, description}]}` (vacío sin comandos
   de usuario). Los comandos internos (`/nueva`, `/abortar`, …) los aporta la app.

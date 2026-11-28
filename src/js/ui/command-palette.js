@@ -198,6 +198,14 @@ function openPalette() {
           placeholder: 'Buscar comandos...',
           onInput: (e) => filterCommands(e.target.value),
         }),
+        el('button', {
+          class: 'btn-icon tiny',
+          type: 'button',
+          title: 'Cerrar panel de comandos',
+          'aria-label': 'Cerrar panel de comandos',
+          text: '×',
+          onClick: closePalette,
+        }),
       ]),
       el('div', { class: 'command-palette-body' }, [
         el('nav', { class: 'command-palette-cats', id: 'command-cats', 'aria-label': 'Categorías' }),
@@ -206,7 +214,7 @@ function openPalette() {
           el('div', { class: 'command-palette-detail', id: 'command-detail' }),
         ]),
       ]),
-      el('div', { class: 'command-palette-footer', text: '↑↓ Navegar  ·  Tab Categoría  ·  Enter Ejecutar  ·  Esc Cerrar  ·  Ctrl+P Abrir/cerrar' }),
+      el('div', { class: 'command-palette-footer', text: '↑↓ Navegar  ·  Tab Categoría  ·  Clic/Enter Ejecutar  ·  ×/Esc Cerrar  ·  Ctrl+P Abrir/cerrar' }),
     ]),
   ]);
 
@@ -284,7 +292,12 @@ function renderList() {
     list.appendChild(el('div', {
       class: `command-item ${isSelected ? 'selected' : ''}`,
       onClick: () => { selectedIndex = index; executeSelected(); },
-      onMouseEnter: () => { selectedIndex = index; renderList(); },
+      onMouseEnter: (event) => {
+        list.querySelector('.command-item.selected')?.classList.remove('selected');
+        event.currentTarget.classList.add('selected');
+        selectedIndex = index;
+        renderDetail();
+      },
     }, [
       el('span', { class: 'command-name', text: cmd.name }),
       el('span', { class: 'command-desc', text: cmd.description }),

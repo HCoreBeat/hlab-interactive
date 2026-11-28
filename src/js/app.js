@@ -42,11 +42,13 @@ let commandPalette = null;
 let splitters = null;
 let subagentTimer = null;
 let envChecked = false;
+let modelCatalogRequest = 0;
 // workspace pedido por un .hl (doble clic); se abre en cuanto el servidor esté listo
 // y tiene prioridad sobre `lastProject`.
 let requestedWorkspace = null;
 
 const SUBAGENT_SWEEP_MS = 2000;
+const MODEL_CATALOG_RETRY_DELAYS = [500, 1000, 2000, 4000, 8000];
 // The grace period (12 s) is handled by `isSubagentLive`; once retired, wait
 // this long before archiving it so the user can still open it from the panel.
 const SUBAGENT_ARCHIVE_DELAY_MS = 48000;
@@ -235,16 +237,54 @@ function showWelcomeScreen(message) {
 }
 
 async function refreshMeta() {
-  const [agents, models, commands, mcpServers] = await Promise.all([
+  const [agents, commands, mcpServers] = await Promise.all([
     request('GET', '/api/agent'),
-    request('GET', '/api/model'),
     request('GET', '/api/command'),
     loadMcpServers(),
   ]);
   if (agents.ok) set({ agents: agents.data?.data || [] });
-  if (models.ok) set({ models: models.data?.data || [] });
   if (commands.ok) set({ commands: commands.data?.data || [] });
   set({ mcpServers });
+  void refreshModelCatalog();
+}
+
+async function refreshModelCatalog() {
+  const requestID = ++modelCatalogRequest;
+  for (let attempt = 0; attempt <= MODEL_CATALOG_RETRY_DELAYS.length; attempt += 1) {
+    const delay = MODEL_CATALOG_RETRY_DELAYS[attempt - 1];
+    if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+    if (requestID !== modelCatalogRequest) return;
+
+    let result;
+    try {
+      result = await request('GET', '/api/model');
+    } catch (error) {
+      if (attempt === MODEL_CATALOG_RETRY_DELAYS.length) {
+        console.warn('[models] No se pudo cargar el catálogo:', error.message);
+      }
+      continue;
+    }
+    if (requestID !== modelCatalogRequest) return;
+    if (!result.ok) {
+      if (attempt === MODEL_CATALOG_RETRY_DELAYS.length) {
+        console.warn('[models] No se pudo cargar el catálogo:', result.error);
+      }
+      continue;
+    }
+
+    const models = Array.isArray(result.data)
+      ? result.data
+      : (Array.isArray(result.data?.data) ? result.data.data : null);
+    if (!models) {
+      console.warn('[models] OpenCode devolvió un formato de catálogo inesperado.');
+      return;
+    }
+    const hasSelectableModels = models.some((model) => model?.enabled !== false);
+    if (hasSelectableModels || attempt === MODEL_CATALOG_RETRY_DELAYS.length) {
+      set({ models });
+      return;
+    }
+  }
 }
 
 async function refreshMcpStatus() {

@@ -71,22 +71,20 @@ export async function createSession({ title, agent, model, permissions } = {}) {
 }
 
 // Formato de adjuntos que acepta el servidor; se aprende al primer envío correcto.
-// El primero es el que documenta la API v2 (Prompt.FileAttachment): base64 sin
-// prefijo `data:` y origen `inline`.
 function base64Payload(dataUrl) {
   const comma = String(dataUrl || '').indexOf(',');
   return comma >= 0 ? String(dataUrl).slice(comma + 1) : String(dataUrl || '');
 }
 const FILE_SHAPES = [
-  (file) => ({ data: base64Payload(file.dataUrl), mime: file.mime, source: { type: 'inline' }, name: file.name }),
-  // el esquema de OpenCode (PromptInput.FileAttachment) solo admite uri, name y description
   (file) => ({ uri: file.dataUrl, name: file.name }),
+  // Formato legacy de Prompt.FileAttachment: base64 sin el prefijo data:.
+  (file) => ({ data: base64Payload(file.dataUrl), mime: file.mime, source: { type: 'inline' }, name: file.name }),
   (file) => ({ uri: file.dataUrl, mime: file.mime, name: file.name }),
   (file) => ({ url: file.dataUrl, mime: file.mime, filename: file.name }),
   (file) => ({ type: 'file', uri: file.dataUrl, mime: file.mime, name: file.name }),
 ];
 // El sufijo de versión invalida un formato aprendido con la lista anterior.
-const FILE_SHAPE_KEY = 'oc.fileShape.v2';
+const FILE_SHAPE_KEY = 'oc.fileShape.v3';
 function readFileShape() {
   try {
     const value = Number(localStorage.getItem(FILE_SHAPE_KEY));
